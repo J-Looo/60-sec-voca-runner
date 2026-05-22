@@ -2,56 +2,70 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>SCAVENGER - 全能操控終極版 v2</title>
+    <title>SCAVENGER - 完整修正專業版</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root { --accent: #00d2ff; --bg: #0a0a0a; --panel: #151515; --glass: rgba(255,255,255,0.05); --speed-boost: #bf00ff; }
         body { margin: 0; background: var(--bg); overflow: hidden; font-family: 'Inter', sans-serif; color: white; user-select: none; touch-action: none; }
         
+        /* 畫面管理器 */
         .screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 5000; background: var(--bg); }
         .screen.active { display: flex; }
 
-        /* 1. 首頁與退出按鈕 */
+        /* 1. 首頁 */
         #home-screen { background: radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 100%); cursor: pointer; }
         .game-title { font-size: 80px; font-weight: 800; letter-spacing: -2px; margin-bottom: 10px; text-shadow: 0 0 30px rgba(0,210,255,0.5); pointer-events: none; }
-        .btn-quit { position: absolute; bottom: 30px; right: 30px; padding: 10px 25px; background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.3); border-radius: 10px; color: #ff4444; font-size: 14px; font-weight: 800; cursor: pointer; transition: 0.2s; }
-        .btn-quit:hover { background: #ff4444; color: black; }
+        .press-hint { font-size: 18px; color: #555; animation: blink 1.5s infinite; pointer-events: none; }
+        .btn-quit { position: absolute; bottom: 30px; right: 30px; padding: 12px 25px; background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.3); border-radius: 12px; color: #ff4444; font-size: 14px; font-weight: 800; cursor: pointer; transition: 0.2s; z-index: 5100; pointer-events: auto; }
+        .btn-quit:hover { background: #ff4444; color: black; transform: scale(1.05); }
 
         /* 2. 模式選擇 */
-        .mode-option { padding: 25px 60px; border-radius: 24px; transition: 0.3s; text-align: center; background: var(--panel); cursor: pointer; border: 2px solid transparent; margin-bottom: 15px; }
-        .mode-option.selected { border-color: var(--accent); transform: scale(1.05); box-shadow: 0 0 30px rgba(0,210,255,0.3); }
+        .mode-container { display: flex; gap: 40px; margin-top: 40px; }
+        .mode-option { padding: 25px 60px; border-radius: 24px; transition: 0.3s; text-align: center; background: var(--panel); cursor: pointer; border: 2px solid transparent; }
+        .mode-option.selected { border-color: var(--accent); transform: scale(1.1); box-shadow: 0 0 30px rgba(0,210,255,0.3); }
+        .mode-option h2 { margin: 0; color: #444; pointer-events: none; }
+        .mode-option.selected h2 { color: var(--accent); }
 
-        /* 3. HUD 與 搖桿 */
+        /* 3. 遊戲中 HUD */
         #game-hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 500; pointer-events: none; display: none; }
         #game-hud.active { display: block; }
         #joystick-base { position: absolute; bottom: 60px; left: 60px; width: 120px; height: 120px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.1); border-radius: 50%; pointer-events: auto; backdrop-filter: blur(5px); }
-        #joystick-stick { position: absolute; top: 50%; left: 50%; width: 50px; height: 50px; background: var(--accent); border-radius: 50%; transform: translate(-50%, -50%); }
+        #joystick-stick { position: absolute; top: 50%; left: 50%; width: 50px; height: 50px; background: var(--accent); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
 
-        /* 4. 背包與拖曳回饋 (要求 4: 滑鼠型態) */
-        #inventory-hud { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; padding: 15px; background: rgba(0,0,0,0.95); border-radius: 20px; border: 1px solid #333; pointer-events: auto; transition: 0.4s; }
+        /* 4. 背包區域 */
+        #inventory-hud { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; padding: 15px; background: rgba(0,0,0,0.95); border-radius: 20px; border: 1px solid #333; pointer-events: auto; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         #inventory-hud.altar-active { border-color: var(--accent); box-shadow: 0 0 30px rgba(0, 210, 255, 0.4); transform: translateX(-50%) scale(1.1); }
-        .slot { width: 60px; height: 60px; background: #1a1a1a; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 26px; color: #333; border: 2px solid transparent; transition: 0.2s; cursor: default; }
+        .slot { width: 60px; height: 60px; background: #1a1a1a; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 26px; color: #333; border: 2px solid transparent; transition: 0.2s; position: relative; cursor: default; }
         .slot.has-item { color: var(--accent); background: #222; }
         .altar-active .slot.has-item { cursor: grab; }
         .altar-active .slot.has-item:active { cursor: grabbing; }
         .slot.kb-focus { border-color: #555; background: #333; transform: translateY(-5px); }
-        .slot.kb-locked { border-color: #ffcc00 !important; color: #ffcc00 !important; transform: translateY(-10px); }
-        .slot.dragging { opacity: 0.3; }
+        .slot.kb-locked { border-color: #ffcc00 !important; color: #ffcc00 !important; box-shadow: 0 0 15px #ffcc00; transform: translateY(-10px) scale(1.1); }
+        .slot.dragging { opacity: 0.3; transform: scale(0.8); border: 2px dashed var(--accent); }
 
-        /* 5. 系統選單與右側累積表 (要求 3: 雙欄顯示) */
-        #system-menu-container { display: flex; gap: 20px; align-items: flex-start; }
-        .modal { background: rgba(25, 25, 25, 0.98); width: 350px; padding: 40px; border-radius: 32px; border: 1px solid #333; text-align: center; }
-        .history-panel { width: 300px; background: rgba(20, 20, 20, 0.9); border: 1px solid #333; border-radius: 24px; padding: 25px; max-height: 400px; display: flex; flex-direction: column; }
-        .history-list { overflow-y: auto; text-align: left; }
+        /* 5. 系統選單與右側列表 */
+        #system-menu-container { display: flex; gap: 20px; align-items: stretch; }
+        .modal { background: rgba(25, 25, 25, 0.98); width: 350px; padding: 40px; border-radius: 32px; border: 1px solid #333; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+        .history-panel { width: 320px; background: rgba(20, 20, 20, 0.9); border: 1px solid #333; border-radius: 28px; padding: 30px; display: flex; flex-direction: column; text-align: left; }
+        .history-list { overflow-y: auto; max-height: 400px; padding-right: 10px; }
+        .history-list::-webkit-scrollbar { width: 4px; }
+        .history-list::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
         .history-item { margin-bottom: 12px; border-bottom: 1px solid #222; padding-bottom: 8px; }
-        .history-en { font-weight: 800; color: #fff; }
+        .history-en { font-weight: 800; font-size: 16px; color: #fff; }
         .history-zh { color: var(--accent); font-size: 13px; margin-top: 2px; }
 
         .menu-btn { width: 100%; padding: 16px; margin-bottom: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 15px; }
         .menu-btn.selected { background: var(--accent); color: black; border-color: white; transform: scale(1.05); }
 
-        #timer-box { background: rgba(0,0,0,0.8); padding: 10px 30px; border-radius: 12px; border: 2px solid #444; font-size: 28px; font-weight: 800; }
+        /* HUD 狀態 */
+        #hud-top { position: absolute; top: 20px; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+        #timer-box { background: rgba(0,0,0,0.8); padding: 10px 30px; border-radius: 12px; border: 2px solid #444; font-size: 28px; font-weight: 800; position: relative; }
         .time-plus-pop { position: absolute; right: -70px; top: 0; color: #00ff88; font-weight: 800; font-size: 24px; animation: floatUpFade 1s forwards; }
+
+        #status-column { position: absolute; top: 20px; left: 20px; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .status-bar { width: 180px; padding: 10px; background: rgba(0,0,0,0.8); border-radius: 10px; border: 1px solid #444; display: none; }
+        .bar-container { width: 100%; height: 5px; background: #222; border-radius: 3px; margin-top: 6px; overflow: hidden; }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.1s linear; }
 
         @keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
         @keyframes floatUpFade { 0% { transform: translateY(10px); opacity: 0; } 30% { transform: translateY(-5px); opacity: 1; } 100% { transform: translateY(-40px); opacity: 0; } }
@@ -63,7 +77,7 @@
     <canvas id="gameCanvas"></canvas>
 
     <!-- 1. 首頁 -->
-    <div id="home-screen" class="screen active" onmousedown="handleStartTrigger()">
+    <div id="home-screen" class="screen active" onmousedown="handleStartTrigger(event)">
         <div class="game-title">SCAVENGER</div>
         <div class="press-hint">PRESS ANY KEY OR CLICK TO START</div>
         <div class="btn-quit" onclick="event.stopPropagation(); window.close();">QUIT GAME</div>
@@ -79,28 +93,34 @@
         <p style="margin-top:40px; color:#555; font-size:14px;">[方向鍵] 切換 · [E] 進入 · [Q] 返回</p>
     </div>
 
-    <!-- 3. 自製匯入 (要求 1: 解析修正) -->
+    <!-- 3. 自製匯入 -->
     <div id="custom-screen" class="screen">
         <div style="background: var(--panel); padding: 40px; border-radius: 28px; width: 480px; text-align: center;">
             <h2 style="margin:0">匯入清單</h2>
             <textarea id="custom-input" style="width:100%; height:160px; background:#000; border:1px solid #444; color:white; padding:15px; margin:20px 0; border-radius:12px;" placeholder="apple 蘋果 n.&#10;wear out 用壞 v. ph."></textarea>
             <button id="custom-start-btn" class="menu-btn selected" onclick="handleCustomStart()">完成匯入並開始</button>
-            <button class="menu-btn" style="border:none" onclick="changeScreen('mode-screen')">返回 [Q]</button>
+            <button id="custom-back-btn" class="menu-btn" style="border:none" onclick="changeScreen('mode-screen')">返回 [Q]</button>
         </div>
     </div>
 
     <!-- 4. 遊戲 HUD -->
     <div id="game-hud">
         <div id="joystick-base"><div id="joystick-stick"></div></div>
-        <div id="hud-top" style="position:absolute; top:20px; left:0; width:100%; display:flex; flex-direction:column; align-items:center; pointer-events:none;">
+        <div id="hud-top">
             <div id="target-display" style="background:rgba(0,210,255,0.1); padding:8px 24px; border-radius:10px; border:1px solid rgba(0,210,255,0.2); font-size:14px; margin-bottom:12px;">尋找單字: <span id="current-target" style="font-weight:800;">---</span></div>
             <div id="timer-wrapper"><div id="timer-box"><span id="time-val">60</span>s</div></div>
         </div>
         <div id="inventory-hud"></div>
         <div id="menu-icon" onclick="toggleMenu()" style="position:absolute; top:20px; right:20px; width:45px; height:45px; background:rgba(255,255,255,0.1); border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; pointer-events:auto; cursor:pointer;"><span></span><span></span><span></span></div>
+        
+        <div id="status-column">
+            <div id="drill-bar" class="status-bar"><span style="color:#ffcc00; font-size:11px; font-weight:800;">⚒️ 鑽頭功能啟動</span><div class="bar-container"><div class="bar-fill" id="drill-fill" style="background:#ffcc00"></div></div></div>
+            <div id="signal-bar" class="status-bar"><span style="color:#00ff88; font-size:11px; font-weight:800;">📡 追蹤訊號啟動</span><div class="bar-container"><div class="bar-fill" id="signal-fill" style="background:#00ff88"></div></div></div>
+            <div id="speed-bar" class="status-bar"><span style="color:var(--speed-boost); font-size:11px; font-weight:800;">⚡ 超速移動中</span><div class="bar-container"><div class="bar-fill" id="speed-fill" style="background:var(--speed-boost)"></div></div></div>
+        </div>
     </div>
 
-    <!-- 5. 系統選單 (要求 3: 雙欄) -->
+    <!-- 5. 系統選單 (要求 3: 右側累積列表) -->
     <div id="system-menu" class="screen" style="background:rgba(0,0,0,0.7); backdrop-filter:blur(10px); z-index: 6000;">
         <div id="system-menu-container">
             <div class="modal">
@@ -110,7 +130,7 @@
                 <button id="sys-2" class="menu-btn" style="color:#ff4444" onclick="location.reload()">返回首頁 / HOME</button>
             </div>
             <div class="history-panel">
-                <div style="font-size:11px; color:#555; font-weight:800; margin-bottom:15px;">已解鎖資料庫 HISTORY</div>
+                <div style="font-size:11px; color:#555; font-weight:800; margin-bottom:15px; letter-spacing: 1px;">已解鎖資料 HISTORY</div>
                 <div id="history-list" class="history-list">尚未拼出單字</div>
             </div>
         </div>
@@ -120,6 +140,7 @@
     <div id="game-over-screen" class="screen">
         <div class="modal" style="border: 2px solid #ff4444;">
             <h1 style="color:#ff4444; margin:0">TIME UP</h1>
+            <div id="final-stats" style="margin:20px 0; color:#888; font-size:14px;"></div>
             <button id="over-0" class="menu-btn selected" onclick="restartGame()">再試一次 / RESTART</button>
             <button id="over-1" class="menu-btn" onclick="location.reload()">回到標題 / HOME</button>
         </div>
@@ -130,7 +151,7 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
-    let WORD_DB = { "APPLE": { zh: "蘋果", pos: "n." }, "PIXEL": { zh: "像素", pos: "n." }, "WEAR OUT": { zh: "用壞", pos: "v. ph." } };
+    let WORD_DB = { "APPLE": { zh: "蘋果", pos: "n." }, "PIXEL": { zh: "像素", pos: "n." }, "SPACE": { zh: "空間", pos: "n." }, "WEAR OUT": { zh: "用壞", pos: "v. ph." } };
     let WORD_POOL = Object.keys(WORD_DB);
 
     let state = {
@@ -139,18 +160,23 @@
         targetWord: "", timeLeft: 60, keys: {},
         isPaused: false, joystick: { active: false, vx: 0, vy: 0 },
         isSortingMode: false, kbSortIdx: 0, kbLockedIdx: null, draggedIndex: null,
-        menuIdx: 0,
-        walls: [], items: [], speedPads: [], drillTime: 0, signalTime: 0, boostTime: 0
+        menuIdx: 0, walls: [], items: [], speedPads: [], drillTime: 0, signalTime: 0, boostTime: 0
     };
 
     const SAFE_ZONE = 160;
     const KEY_MAP = { 'KeyW': 'Up', 'ArrowUp': 'Up', 'KeyS': 'Down', 'ArrowDown': 'Down', 'KeyA': 'Left', 'ArrowLeft': 'Left', 'KeyD': 'Right', 'ArrowRight': 'Right' };
 
-    function handleStartTrigger() { if(state.screen === 'home') changeScreen('mode-screen'); }
+    // --- 全域輸入監聽 ---
+    function handleStartTrigger(e) { 
+        if(e && e.target.classList.contains('btn-quit')) return; 
+        if(state.screen === 'home') changeScreen('mode-screen'); 
+    }
 
-    // --- 全域按鍵監聽 (要求 5: Q 鍵隔離) ---
     window.addEventListener('keydown', e => {
-        if(state.screen === 'home') { handleStartTrigger(); return; }
+        // 要求 1: 輸入框聚焦時不觸發快捷鍵
+        if(document.activeElement.tagName === 'TEXTAREA') return;
+
+        handleStartTrigger();
 
         if (e.code === 'KeyE') {
             if (state.screen === 'playing') {
@@ -170,10 +196,20 @@
             if (state.isSortingMode) { state.isSortingMode = false; updateUI(); return; }
             if (state.screen === 'system-menu') { toggleMenu(); return; }
             if (state.screen === 'custom-screen') { changeScreen('mode-screen'); return; }
-            if (state.screen === 'mode-screen') { location.reload(); return; } // 首頁不偵測 Q 跳回，選單才跳回
+            if (state.screen === 'mode-screen') { location.reload(); return; }
         }
 
-        if (e.code === 'Tab') { e.preventDefault(); if(state.screen==='playing' || state.screen==='system-menu') toggleMenu(); return; }
+        if (e.code === 'Tab') { 
+            e.preventDefault(); 
+            if(state.screen === 'custom-screen') {
+                const input = document.getElementById('custom-input');
+                const btn = document.getElementById('custom-start-btn');
+                if(document.activeElement === input) btn.focus(); else input.focus();
+            } else if(state.screen==='playing' || state.screen==='system-menu') {
+                toggleMenu(); 
+            }
+            return; 
+        }
 
         const dir = KEY_MAP[e.code];
         if (dir && (state.screen !== 'playing' || state.isSortingMode)) { handleNav(dir); return; }
@@ -196,56 +232,19 @@
             updateMenuVisuals();
         }
         if (state.isSortingMode) {
-            const move = (dir === 'Left' || dir === 'Up') ? -1 : (dir === 'Right' || dir === 'Down' ? 1 : 0);
+            const move = (dir === 'Left' || dir === 'Up') ? -1 : 1;
             const nextIdx = Math.max(0, Math.min(state.inventory.length - 1, state.kbSortIdx + move));
             if (state.kbLockedIdx !== null) {
                 [state.inventory[state.kbSortIdx], state.inventory[nextIdx]] = [state.inventory[nextIdx], state.inventory[state.kbSortIdx]];
                 state.kbLockedIdx = nextIdx;
             }
             state.kbSortIdx = nextIdx;
-            updateUI(); checkWin();
+            updateUI();
+            checkWin(); // 要求 2: 檢查是否拼對
         }
     }
 
-    // --- 虛擬搖桿 ---
-    const jBase = document.getElementById('joystick-base');
-    const jStick = document.getElementById('joystick-stick');
-    function handleJoystick(e) {
-        if (!state.joystick.active) return;
-        const rect = jBase.getBoundingClientRect();
-        const cx = rect.left + 60, cy = rect.top + 60;
-        const clX = e.touches ? e.touches[0].clientX : e.clientX, clY = e.touches ? e.touches[0].clientY : e.clientY;
-        let dx = clX - cx, dy = clY - cy, dist = Math.hypot(dx, dy);
-        if (dist > 50) { dx *= 50/dist; dy *= 50/dist; }
-        jStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-        state.joystick.vx = dx/50; state.joystick.vy = dy/50;
-    }
-    jBase.addEventListener('mousedown', () => state.joystick.active = true);
-    jBase.addEventListener('touchstart', () => state.joystick.active = true);
-    window.addEventListener('mousemove', handleJoystick); window.addEventListener('touchmove', handleJoystick);
-    const stopJ = () => { state.joystick.active = false; state.joystick.vx = 0; state.joystick.vy = 0; jStick.style.transform = 'translate(-50%, -50%)'; };
-    window.addEventListener('mouseup', stopJ); window.addEventListener('touchend', stopJ);
-
-    // --- 解析修正 (要求 1) ---
-    function handleCustomStart() {
-        const input = document.getElementById('custom-input').value;
-        const lines = input.split('\n').filter(l => l.trim().length > 0);
-        const newDB = {};
-        lines.forEach(line => {
-            // 嘗試解析：單字 翻譯 詞性 (以空格分隔)
-            const parts = line.trim().split(/\s+/);
-            if (parts.length >= 1) {
-                const en = parts[0].toUpperCase();
-                const zh = parts[1] || "自訂";
-                const pos = parts[2] || "";
-                newDB[en] = { zh, pos };
-            }
-        });
-        if (Object.keys(newDB).length === 0) return alert("解析失敗，請確保每行至少有一個單字");
-        WORD_DB = newDB; WORD_POOL = Object.keys(newDB); startGame();
-    }
-
-    // --- 道具生成 ---
+    // --- 遊戲邏輯 ---
     function spawnItem(type) {
         if(state.items.some(it => it.type === type)) return;
         let x, y, safe = false;
@@ -279,12 +278,22 @@
         spawnItem('drill'); spawnItem('signal'); updateUI();
     }
 
-    // --- 拖拽回饋 (要求 4) ---
+    // --- 拖曳排序 ---
     function initDragEvents(slot, index) {
         slot.draggable = true;
-        slot.ondragstart = (e) => { if(!document.getElementById('inventory-hud').classList.contains('altar-active')) return e.preventDefault(); state.draggedIndex = index; slot.classList.add('dragging'); };
+        slot.ondragstart = (e) => { 
+            if(!document.getElementById('inventory-hud').classList.contains('altar-active')) return e.preventDefault(); 
+            state.draggedIndex = index; 
+            slot.classList.add('dragging'); 
+        };
         slot.ondragover = e => e.preventDefault();
-        slot.ondrop = () => { if(state.draggedIndex !== null && state.draggedIndex !== index) { [state.inventory[state.draggedIndex], state.inventory[index]] = [state.inventory[index], state.inventory[state.draggedIndex]]; updateUI(); checkWin(); } };
+        slot.ondrop = () => { 
+            if(state.draggedIndex !== null && state.draggedIndex !== index) { 
+                [state.inventory[state.draggedIndex], state.inventory[index]] = [state.inventory[index], state.inventory[state.draggedIndex]]; 
+                updateUI(); 
+                checkWin(); 
+            } 
+        };
         slot.ondragend = () => { slot.classList.remove('dragging'); state.draggedIndex = null; };
     }
 
@@ -304,10 +313,11 @@
         if(state.signalTime > 0) { state.signalTime -= dt; if(state.signalTime <= 0) spawnItem('signal'); }
         if(state.boostTime > 0) state.boostTime -= dt;
 
-        // 要求 2: 祭壇即時判定
         const isAltar = Math.hypot(state.worldX, state.worldY) < 80;
         document.getElementById('inventory-hud').classList.toggle('altar-active', isAltar);
-        if (isAltar) checkWin();
+        
+        // 要求 2: 在祭壇內即時判定
+        if(isAltar) checkWin();
 
         if (state.isSortingMode) return;
 
@@ -322,10 +332,8 @@
         const fx = mx * curSpeed, fy = my * curSpeed;
         const getCol = (nx, ny) => { for(let w of state.walls) if(nx+14 > w.x && nx-14 < w.x+w.w && ny+14 > w.y && ny-14 < w.y+w.h) return w; return null; };
         
-        let wX = getCol(state.worldX + fx, state.worldY);
-        if(!wX) state.worldX += fx; else if(state.drillTime > 0) state.walls = state.walls.filter(w => w !== wX);
-        let wY = getCol(state.worldX, state.worldY + fy);
-        if(!wY) state.worldY += fy; else if(state.drillTime > 0) state.walls = state.walls.filter(w => w !== wY);
+        if(!getCol(state.worldX + fx, state.worldY)) state.worldX += fx;
+        if(!getCol(state.worldX, state.worldY + fy)) state.worldY += fy;
 
         state.speedPads.forEach(p => { if(Math.hypot(p.x - state.worldX, p.y - state.worldY) < 30) state.boostTime = 3000; });
         state.items = state.items.filter(it => {
@@ -344,6 +352,8 @@
 
         document.getElementById('drill-bar').style.display = state.drillTime > 0 ? 'block' : 'none';
         document.getElementById('drill-fill').style.width = (state.drillTime / 10000 * 100) + '%';
+        document.getElementById('signal-bar').style.display = state.signalTime > 0 ? 'block' : 'none';
+        document.getElementById('signal-fill').style.width = (state.signalTime / 8000 * 100) + '%';
         document.getElementById('speed-bar').style.display = state.boostTime > 0 ? 'block' : 'none';
         document.getElementById('speed-fill').style.width = (state.boostTime / 3000 * 100) + '%';
     }
@@ -358,11 +368,18 @@
     }
 
     function draw() {
-        const cx = canvas.width/2, cy = canvas.height/2; ctx.clearRect(0,0,canvas.width,canvas.height);
+        const cx = canvas.width/2, cy = canvas.height/2; 
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        
+        // 要求：始終繪製背景色
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+
         if(state.screen === 'playing') {
-            ctx.strokeStyle = '#151515';
+            ctx.strokeStyle = '#222'; // 亮一點的格線顏色
             for(let x=-state.worldX%50; x<canvas.width; x+=50) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
             for(let y=-state.worldY%50; y<canvas.height; y+=50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
+            
             state.speedPads.forEach(p => {
                 ctx.fillStyle = `rgba(191, 0, 255, ${0.2 + Math.abs(Math.sin(Date.now()/300))*0.3})`;
                 ctx.fillRect(cx+p.x-state.worldX-25, cy+p.y-state.worldY-25, 50, 50);
@@ -389,18 +406,58 @@
         update(1000/60); requestAnimationFrame(draw);
     }
 
+    // --- 虛擬搖桿 ---
+    const jBase = document.getElementById('joystick-base');
+    const jStick = document.getElementById('joystick-stick');
+    function handleJoystick(e) {
+        if (!state.joystick.active) return;
+        const rect = jBase.getBoundingClientRect();
+        const cx = rect.left + 60, cy = rect.top + 60;
+        const clX = e.touches ? e.touches[0].clientX : e.clientX, clY = e.touches ? e.touches[0].clientY : e.clientY;
+        let dx = clX - cx, dy = clY - cy, dist = Math.hypot(dx, dy);
+        if (dist > 50) { dx *= 50/dist; dy *= 50/dist; }
+        jStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+        state.joystick.vx = dx/50; state.joystick.vy = dy/50;
+    }
+    jBase.addEventListener('mousedown', () => state.joystick.active = true);
+    jBase.addEventListener('touchstart', () => state.joystick.active = true);
+    window.addEventListener('mousemove', handleJoystick); window.addEventListener('touchmove', handleJoystick);
+    const stopJ = () => { state.joystick.active = false; state.joystick.vx = 0; state.joystick.vy = 0; jStick.style.transform = 'translate(-50%, -50%)'; };
+    window.addEventListener('mouseup', stopJ); window.addEventListener('touchend', stopJ);
+
+    // --- 其他控制 ---
     function changeScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         state.menuIdx = 0; state.isPaused = false; state.isSortingMode = false;
         if(id === 'playing') { document.getElementById('game-hud').classList.add('active'); state.screen = 'playing'; if(!state.targetWord) initLevel(); }
         else { document.getElementById('game-hud').classList.remove('active'); const target = document.getElementById(id); if(target) target.classList.add('active'); state.screen = id; updateMenuVisuals(); }
-        if(id === 'custom-screen') { setTimeout(() => document.getElementById('custom-input').focus(), 100); }
     }
 
     function updateMenuVisuals() {
         if (state.screen === 'mode-screen') { document.getElementById('mode-0').classList.toggle('selected', state.menuIdx === 0); document.getElementById('mode-1').classList.toggle('selected', state.menuIdx === 1); }
-        else if (state.screen === 'system-menu') { [0,1,2].forEach(i => document.getElementById(`sys-${i}`).classList.toggle('selected', state.menuIdx === i)); const list = document.getElementById('history-list'); list.innerHTML = state.completedWords.map(w => `<div class="history-item"><div class="history-en">${w}</div><div class="history-zh">${WORD_DB[w]?.zh || "自訂"}</div></div>`).join('') || "尚未拼出單字"; }
+        else if (state.screen === 'system-menu') { 
+            [0,1,2].forEach(i => document.getElementById(`sys-${i}`).classList.toggle('selected', state.menuIdx === i)); 
+            const list = document.getElementById('history-list');
+            list.innerHTML = state.completedWords.map(w => `<div class="history-item"><div class="history-en">${w}</div><div class="history-zh">${WORD_DB[w]?.zh || "自訂"}</div></div>`).join('') || "尚未拼出單字";
+        }
         else if (state.screen === 'game-over-screen') { [0,1].forEach(i => document.getElementById(`over-${i}`).classList.toggle('selected', state.menuIdx === i)); }
+    }
+
+    function handleCustomStart() {
+        const input = document.getElementById('custom-input').value;
+        const lines = input.split('\n').filter(l => l.trim().length > 0);
+        const newDB = {};
+        lines.forEach(line => {
+            const parts = line.trim().split(/\s+/);
+            if (parts.length >= 1) {
+                const en = parts[0].toUpperCase();
+                const zh = parts[1] || "自訂";
+                const pos = parts[2] || "";
+                newDB[en] = { zh, pos };
+            }
+        });
+        if (Object.keys(newDB).length === 0) return alert("請輸入單字");
+        WORD_DB = newDB; WORD_POOL = Object.keys(newDB); startGame();
     }
 
     function selectMode(m) { if(m === 'preset') startGame(); }
@@ -411,7 +468,7 @@
     function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 
     setInterval(() => { if(state.screen === 'playing' && !state.isPaused) { state.timeLeft--; document.getElementById('time-val').innerText = state.timeLeft; if(state.timeLeft <= 0) changeScreen('game-over-screen'); } }, 1000);
-    window.addEventListener('resize', resize); resize();
+    window.addEventListener('resize', resize); resize(); requestAnimationFrame(draw);
 </script>
 </body>
 </html>

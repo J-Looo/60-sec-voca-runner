@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>SCAVENGER - 終極拾荒版</title>
+    <title>SCAVENGER - 修正出生點安全版</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root { --accent: #00d2ff; --bg: #0a0a0a; --panel: #151515; --glass: rgba(255,255,255,0.05); }
@@ -16,7 +16,7 @@
         .game-title { font-size: 80px; font-weight: 800; letter-spacing: -2px; margin-bottom: 20px; text-shadow: 0 0 30px rgba(0,210,255,0.5); }
         .press-hint { font-size: 18px; color: #555; animation: blink 1.5s infinite; }
 
-        /* 2. 模式選擇 (對齊截圖) */
+        /* 2. 模式選擇 */
         .mode-option { cursor: pointer; text-align: center; margin-bottom: 40px; transition: 0.3s; }
         .mode-option:hover { transform: scale(1.1); }
         .mode-option h2 { color: var(--accent); font-size: 36px; margin: 0; letter-spacing: 2px; }
@@ -33,13 +33,11 @@
         #menu-icon { position: absolute; top: 20px; right: 20px; width: 45px; height: 45px; background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px; cursor: pointer; pointer-events: auto; backdrop-filter: blur(10px); }
         #menu-icon span { width: 22px; height: 2px; background: white; border-radius: 2px; }
 
-        /* 道具狀態列 */
         #status-column { position: absolute; top: 20px; left: 20px; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .status-bar { width: 180px; padding: 10px; background: rgba(0,0,0,0.8); border-radius: 10px; border: 1px solid #444; display: none; }
         .bar-container { width: 100%; height: 5px; background: #222; border-radius: 3px; margin-top: 6px; overflow: hidden; }
         .bar-fill { height: 100%; width: 100%; transition: width 0.1s linear; }
 
-        /* 背包拖拽排序 */
         #inventory-hud { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; padding: 15px; background: rgba(0,0,0,0.9); border-radius: 20px; border: 1px solid #333; pointer-events: auto; }
         .slot { width: 60px; height: 60px; background: #1a1a1a; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 28px; color: #333; border: 2px solid transparent; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .slot.has-item { color: var(--accent); background: #222; }
@@ -47,7 +45,6 @@
         .slot.dragging { opacity: 0.4; transform: scale(0.9); border: 2px dashed var(--accent); }
         .slot.drag-over { background: #333; border-color: var(--accent); transform: scale(1.1) translateY(-5px); }
 
-        /* 5. 系統與結算 */
         .modal { background: rgba(25, 25, 25, 0.95); width: 380px; padding: 40px; border-radius: 32px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
         .menu-btn { width: 100%; padding: 16px; margin-bottom: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 15px; }
         .menu-btn:hover { background: rgba(255,255,255,0.15); color: var(--accent); border-color: var(--accent); }
@@ -64,13 +61,11 @@
 <div id="game-container">
     <canvas id="gameCanvas"></canvas>
 
-    <!-- 1. 首頁 -->
     <div id="home-screen" class="screen active">
         <div class="game-title">SCAVENGER</div>
         <div class="press-hint">PRESS ANY KEY TO START</div>
     </div>
 
-    <!-- 2. 模式選擇 (文字居中樣式) -->
     <div id="mode-screen" class="screen">
         <h1 style="margin-bottom: 60px; font-size: 32px;">選擇挑戰模式</h1>
         <div class="mode-option" onclick="selectMode('preset')">
@@ -83,18 +78,16 @@
         </div>
     </div>
 
-    <!-- 3. 自製關卡匯入 -->
     <div id="custom-screen" class="screen">
         <div class="input-area">
             <h2 style="margin:0;">匯入清單</h2>
-            <p style="font-size:12px; color:#555; margin-top:10px;">格式：英文單字/片語 中文 詞性 (每行一筆)</p>
+            <p style="font-size:12px; color:#555; margin-top:10px;">格式：英文單字/片語 中文 詞性</p>
             <textarea id="custom-input" placeholder="apple 蘋果 n.&#10;wear out 用壞 v. ph."></textarea>
             <button class="btn-cyan" onclick="handleCustomStart()">完成匯入並開始</button>
             <button onclick="changeScreen('mode-screen')" style="background:none; border:none; color:#444; width:100%; margin-top:20px; cursor:pointer;">返回</button>
         </div>
     </div>
 
-    <!-- 4. 遊戲 HUD -->
     <div id="game-hud">
         <div id="menu-icon" onclick="toggleMenu()"><span></span><span></span><span></span></div>
         <div id="status-column">
@@ -110,7 +103,6 @@
         <div id="inventory-hud"></div>
     </div>
 
-    <!-- 5. 系統選單 (暫停時) -->
     <div id="system-menu" class="screen" style="background:rgba(0,0,0,0.6); backdrop-filter:blur(8px);">
         <div class="modal">
             <div style="font-size:12px; color:#555; letter-spacing:2px; font-weight:800; margin-bottom:20px;">SYSTEM MENU</div>
@@ -120,7 +112,6 @@
         </div>
     </div>
 
-    <!-- 6. 結算畫面 (時間結束) -->
     <div id="game-over-screen" class="screen">
         <div class="modal" style="border-color: #ff4444;">
             <h1 style="color:#ff4444; font-size:48px; margin:0;">TIME UP</h1>
@@ -135,7 +126,6 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
-    // --- 預設單字庫 ---
     let WORD_DB = {
         "APPLE": { zh: "蘋果", pos: "n." },
         "PIXEL": { zh: "像素", pos: "n." },
@@ -157,15 +147,15 @@
         draggedIndex: null
     };
 
-    // --- 介面管理 ---
+    const SAFE_ZONE_RADIUS = 150; // 出生點安全半徑
+
     function changeScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         const hud = document.getElementById('game-hud');
         if(id === 'playing') hud.classList.add('active');
         else {
             hud.classList.remove('active');
-            const target = document.getElementById(id);
-            if(target) target.classList.add('active');
+            if(document.getElementById(id)) document.getElementById(id).classList.add('active');
         }
         state.screen = id;
     }
@@ -193,7 +183,6 @@
         startGame();
     }
 
-    // --- 拖曳邏輯 ---
     function initDragEvents(slot, index) {
         slot.draggable = true;
         slot.ondragstart = (e) => {
@@ -227,13 +216,21 @@
         });
     }
 
-    // --- 道具生成 ---
     function spawnItem(type) {
-        const ang = Math.random() * Math.PI * 2, dist = 300 + Math.random() * 300;
-        state.items.push({ x: state.worldX + Math.cos(ang) * dist, y: state.worldY + Math.sin(ang) * dist, type });
+        let x, y, safe = false;
+        while(!safe) {
+            const ang = Math.random() * Math.PI * 2, dist = 300 + Math.random() * 300;
+            x = state.worldX + Math.cos(ang) * dist;
+            y = state.worldY + Math.sin(ang) * dist;
+            // 道具不需要離出生點太遠，但不能在牆裡
+            safe = true;
+            for(let w of state.walls) {
+                if(x > w.x - 20 && x < w.x + w.w + 20 && y > w.y - 20 && y < w.y + w.h + 20) safe = false;
+            }
+        }
+        state.items.push({ x, y, type });
     }
 
-    // --- 遊戲邏輯 ---
     function startGame() {
         changeScreen('playing');
         state.worldX = 0; state.worldY = 0; state.timeLeft = 60; state.completedWords = [];
@@ -256,9 +253,25 @@
 
         const chars = state.targetWord.replace(/\s+/g, '').split('');
         chars.forEach(char => {
-            const rx = (Math.random()-0.5)*1400, ry = (Math.random()-0.5)*1400;
+            let rx, ry;
+            // 字母不要直接在出生點
+            do {
+                rx = (Math.random()-0.5)*1400;
+                ry = (Math.random()-0.5)*1400;
+            } while (Math.hypot(rx, ry) < 120);
+
             state.letters.push({ x: rx, y: ry, char });
-            for(let i=0; i<3; i++) state.walls.push({ x: rx+(Math.floor(Math.random()*3)-1)*40, y: ry+(Math.floor(Math.random()*3)-1)*40, w: 40, h: 40 });
+            
+            // 核心修正：牆壁生成檢查安全區
+            for(let i=0; i<3; i++) {
+                let wx = rx + (Math.floor(Math.random()*3)-1)*40;
+                let wy = ry + (Math.floor(Math.random()*3)-1)*40;
+                
+                // 如果座標在安全半徑外，才生成牆壁
+                if (Math.hypot(wx, wy) > SAFE_ZONE_RADIUS) {
+                    state.walls.push({ x: wx, y: wy, w: 40, h: 40 });
+                }
+            }
         });
         state.inventory = new Array(chars.length).fill("");
         spawnItem('drill'); spawnItem('signal');

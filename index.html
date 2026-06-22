@@ -1476,6 +1476,34 @@
       
       // 啟動遊戲渲染與邏輯主循環
       draw();
+
+      // --- GitHub Pages (HTTPS) 專用：瀏覽器自動播放限制全域解鎖器 ---
+      function unlockAudio() {
+          try {
+              if (!gameAudioCtx) {
+                  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                  if (AudioContextClass) {
+                      gameAudioCtx = new AudioContextClass();
+                  }
+              }
+              if (gameAudioCtx && gameAudioCtx.state === 'suspended') {
+                  gameAudioCtx.resume().then(() => {
+                      // 成功解鎖後，功成身退，移除此解鎖監聽器防止重複執行
+                      window.removeEventListener('click', unlockAudio);
+                      window.removeEventListener('keydown', unlockAudio);
+                      window.removeEventListener('touchstart', unlockAudio);
+                  });
+              }
+          } catch (e) {
+              console.warn("自動音效解鎖失敗:", e);
+          }
+      }
+      
+      // 監聽玩家與網頁的「第一次接觸」來強制解鎖音效
+      window.addEventListener('click', unlockAudio);
+      window.addEventListener('keydown', unlockAudio);
+      window.addEventListener('touchstart', unlockAudio);
+
     </script>
     </script>
   </body>

@@ -2,6 +2,7 @@
 <html lang="zh-TW">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>SCAVENGER - 終極穩定修正版</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap"
@@ -58,12 +59,13 @@
         cursor: pointer;
       }
       .game-title {
-        font-size: 80px;
+        font-size: min(12vw, 80px); /* 響應式字量 */
         font-weight: 800;
         letter-spacing: -2px;
         margin-bottom: 10px;
         text-shadow: 0 0 30px rgba(0, 210, 255, 0.5);
         pointer-events: none;
+        text-align: center;
       }
       .press-hint {
         font-size: 18px;
@@ -135,8 +137,8 @@
       }
       #joystick-base {
         position: absolute;
-        bottom: 60px;
-        left: 60px;
+        bottom: 50px;
+        left: 40px;
         width: 120px;
         height: 120px;
         background: rgba(255, 255, 255, 0.05);
@@ -144,6 +146,14 @@
         border-radius: 50%;
         pointer-events: auto;
         backdrop-filter: blur(5px);
+        display: none; /* 電腦版隱藏 */
+      }
+
+      /* 核心：僅在觸控裝置 (Coarse Pointer) 上顯現虛擬搖桿 */
+      @media (pointer: coarse) {
+        #joystick-base {
+          display: block; 
+        }
       }
       #joystick-stick {
         position: absolute;
@@ -160,17 +170,19 @@
       /* 背包區域 */
       #inventory-hud {
         position: absolute;
-        bottom: 40px;
+        bottom: min(5vw, 40px);
         left: 50%;
         transform: translateX(-50%);
         display: flex;
-        gap: 12px;
-        padding: 15px;
+        gap: 8px;
+        padding: 12px;
         background: rgba(0, 0, 0, 0.95);
         border-radius: 20px;
         border: 1px solid #333;
         pointer-events: auto;
         transition: 0.4s;
+        max-width: 95%; /* 防止超出手機寬度 */
+        box-sizing: border-box;
       }
       #inventory-hud.altar-active {
         border-color: var(--accent);
@@ -178,20 +190,21 @@
         transform: translateX(-50%) scale(1.1);
       }
       .slot {
-        width: 60px;
-        height: 60px;
+        width: min(11vw, 60px); /* 在手機上按比例收縮 */
+        height: min(11vw, 60px);
         background: #1a1a1a;
         border-radius: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 800;
-        font-size: 26px;
+        font-size: min(5vw, 26px); /* 字級同步縮放 */
         color: #333;
         border: 2px solid transparent;
         transition: 0.2s;
         position: relative;
         cursor: default;
+        flex-shrink: 0; /* 防止寬度被 Flex 擠壓變形 */
       }
       .slot.has-item {
         color: var(--accent);
@@ -220,20 +233,32 @@
         opacity: 0.3;
         transform: scale(0.8);
       }
+      .slot.win-highlight {
+        background: #ffcc00 !important;
+        color: black !important;
+        border-color: white !important;
+        transform: scale(1.15) translateY(-5px);
+        box-shadow: 0 0 25px #ffcc00;
+      }
 
       /* 要求 3: 系統選單與右側累積表 */
       #system-menu-container {
         display: flex;
         gap: 20px;
-        align-items: stretch;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        flex-direction: row;
       }
       .modal {
         background: rgba(25, 25, 25, 0.98);
-        width: 350px;
-        padding: 40px;
+        width: 90%;
+        max-width: 350px;
+        padding: 30px 20px;
         border-radius: 32px;
         border: 1px solid #333;
         text-align: center;
+        box-sizing: border-box;
       }
       .history-panel {
         width: 320px;
@@ -244,7 +269,27 @@
         display: flex;
         flex-direction: column;
         text-align: left;
+        box-sizing: border-box;
       }
+
+      /* 手機與平板直立畫面(螢幕寬度小於 768px)的自動折疊 */
+      @media (max-width: 768px) {
+        #system-menu-container {
+          flex-direction: column;
+          max-height: 90vh;
+          overflow-y: auto;
+          gap: 15px;
+        }
+        .history-panel {
+          width: 90% !important;
+          max-width: 350px;
+          padding: 20px !important;
+        }
+      }
+
+
+
+
       .history-list {
         overflow-y: auto;
         max-height: 400px;
@@ -421,38 +466,84 @@
         </p>
       </div>
 
-      <!-- 3. 自製匯入 (要求 1: 修正解析) -->
+     <!-- 3. 自製匯入 (Google 試算表同步 + 本地記憶儲存) -->
+      <!-- 3. 自製匯入 (Google 試算表同步 + 本地記憶儲存) -->
       <div id="custom-screen" class="screen">
         <div
           style="
             background: var(--panel);
             padding: 40px;
             border-radius: 28px;
-            width: 480px;
+            width: 500px;
             text-align: center;
           "
         >
-          <h2 style="margin: 0">匯入清單</h2>
+          <h2 style="margin: 0 0 15px 0;">Google 試算表同步連結</h2>
+          
+          <!-- 試算表匯入與重整列 -->
+          <div style="display: flex; gap: 8px; margin-bottom: 5px;">
+            <input
+              type="text"
+              id="sheets-url-input"
+              style="
+                flex: 1;
+                background: #000;
+                border: 1px solid #444;
+                color: white;
+                padding: 12px;
+                border-radius: 12px;
+                box-sizing: border-box;
+                font-size: 13px;
+              "
+              placeholder="請貼上 Google 試算表公開共用連結"
+            />
+            <button 
+              onclick="handleSheetImport()" 
+              style="background: var(--accent); color: black; border: none; padding: 0 15px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; transition: 0.2s;"
+              onmouseover="this.style.opacity=0.8"
+              onmouseout="this.style.opacity=1"
+            >
+              匯入
+            </button>
+            <button 
+              onclick="handleSheetRefresh()" 
+              style="background: #222; color: white; border: 1px solid #444; width: 45px; border-radius: 12px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;"
+              onmouseover="this.style.background='#333'"
+              onmouseout="this.style.background='#222'"
+              title="重新整理雲端資料"
+            >
+              🔄
+            </button>
+          </div>
+          <div id="sync-status" style="font-size: 11px; color: #888; margin-bottom: 20px; text-align: left; padding-left: 5px;">
+              狀態：尚未載入試算表
+          </div>
+
+          <h3 style="margin: 0 0 10px 0; font-size: 14px; text-align: left; color: #888;">目前單字清單 (同步後可於此微調編輯)</h3>
           <textarea
             id="custom-input"
             style="
               width: 100%;
-              height: 160px;
+              height: 140px;
               background: #000;
               border: 1px solid #444;
               color: white;
               padding: 15px;
-              margin: 20px 0;
+              margin-bottom: 20px;
               border-radius: 12px;
+              box-sizing: border-box;
+              font-size: 13px;
+              font-family: monospace;
             "
             placeholder="apple 蘋果 n.&#10;wear out 用壞 v. ph."
           ></textarea>
+          
           <button
             id="custom-start-btn"
             class="menu-btn selected"
-            onclick="handleCustomStart()"
+            onclick="handleStartAfterReview()"
           >
-            完成匯入並開始
+            確認單字無誤，開始遊戲
           </button>
           <button
             class="menu-btn"
@@ -477,10 +568,14 @@
               border: 1px solid rgba(0, 210, 255, 0.2);
               font-size: 14px;
               margin-bottom: 12px;
+              display: flex;
+              gap: 15px;
+              align-items: center;
             "
           >
-            尋找單字:
-            <span id="current-target" style="font-weight: 800">---</span>
+            <div>尋找單字: <span id="current-target" style="font-weight: 800">---</span></div>
+            <div style="opacity: 0.3">|</div>
+            <div style="color: #00ff88;">已解鎖: <span id="word-count-hud" style="font-weight: 800;">0</span></div>
           </div>
           <div id="timer-wrapper">
             <div id="timer-box"><span id="time-val">60</span>s</div>
@@ -584,11 +679,12 @@
             <button id="sys-1" class="menu-btn" onclick="resetCurrentLevel()">
               重置本關 / RESET
             </button>
+            <!-- 系統選單中的 sys-2 -->
             <button
               id="sys-2"
               class="menu-btn"
               style="color: #ff4444"
-              onclick="location.reload()"
+              onclick="handleGoHome()"
             >
               返回首頁 / HOME
             </button>
@@ -601,9 +697,12 @@
                 font-weight: 800;
                 margin-bottom: 15px;
                 letter-spacing: 1px;
+                display: flex;
+                justify-content: space-between;
               "
             >
-              已解鎖資料 HISTORY
+              <span>已解鎖資料 HISTORY</span>
+              <span style="color: var(--accent);">共 <span id="word-count-menu">0</span> 個</span>
             </div>
             <div id="history-list" class="history-list">尚未拼出單字</div>
           </div>
@@ -617,7 +716,8 @@
           <button id="over-0" class="menu-btn selected" onclick="restartGame()">
             再試一次 / RESTART
           </button>
-          <button id="over-1" class="menu-btn" onclick="location.reload()">
+          <!-- 結束畫面中的 over-1 -->
+          <button id="over-1" class="menu-btn" onclick="handleGoHome()">
             回到標題 / HOME
           </button>
         </div>
@@ -628,10 +728,7 @@
       const canvas = document.getElementById("gameCanvas");
 
 // --- 網頁音效合成器 (Web Audio API) ---
-// --- 網頁音效合成器 (Web Audio API) ---
-    // --- 網頁音效合成器防連發冷卻紀錄 ---
-    // --- 網頁音效合成器防連發冷卻紀錄 ---
-    // --- 網頁音效合成器防連發冷卻、全域 Context 宣告 ---
+// --- 網頁音效合成器防連發冷卻紀錄 ---
     const lastSFXPlayTimes = {};
     let gameAudioCtx = null; // 全域共享的音訊上下文，防止實例數量超限失效
 
@@ -663,7 +760,7 @@
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(260, ctx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(700, ctx.currentTime + 0.4);
-                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                gain.gain.setValueAtTime(1.4, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
                 osc.start();
                 osc.stop(ctx.currentTime + 0.4);
@@ -677,42 +774,60 @@
                 osc.type = 'triangle';
                 osc.frequency.setValueAtTime(520, ctx.currentTime);
                 osc.frequency.setValueAtTime(660, ctx.currentTime + 0.08);
-                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                gain.gain.setValueAtTime(0.9, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
                 osc.start();
                 osc.stop(ctx.currentTime + 0.25);
             } 
             else if (type === 'wall') {
-                // 碰撞牆壁：低沉短促的撞擊聲 (冷卻 180ms)
-                if (now - (lastSFXPlayTimes['wall'] || 0) < 180) return;
-                lastSFXPlayTimes['wall'] = now;
-
+                // 輕觸石磚牆面：極短（0.04s）、乾淨、高頻的電子微晶敲擊聲
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc.connect(gain);
                 gain.connect(ctx.destination);
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(120, ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.2, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.04);
+                gain.gain.setValueAtTime(0.4, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
                 osc.start();
-                osc.stop(ctx.currentTime + 0.1);
+                osc.stop(ctx.currentTime + 0.04);
             } 
             else if (type === 'drill') {
-                // 獲得鑽頭：鋸齒波機械啟動聲
+                // 脈衝充能集氣音效 (Pulse Charging / Sci-fi Energy Build-up)
+                // 運用 18Hz LFO 震盪 Gain 產生高度飽滿的脈衝抖動感 (約 0.6 秒)
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
+                
+                // 脈衝調變器 (LFO)：產生高速的音量強弱抖動效果 (Tremolo)
+                const lfo = ctx.createOscillator();
+                const lfoGain = ctx.createGain();
+                
+                osc.type = 'triangle'; // 三角波比正弦波更具科幻儀器感
+                osc.frequency.setValueAtTime(100, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.6); // 高速爬升
+
+                lfo.type = 'sine';
+                lfo.frequency.setValueAtTime(18, ctx.currentTime); // 18Hz 脈衝頻率
+
+                // 將 LFO 連接至 Gain 節點調變音量
+                lfoGain.gain.setValueAtTime(0.08, ctx.currentTime); // 限制抖動振幅避免破音
+                lfo.connect(lfoGain);
+                lfoGain.connect(gain.gain); 
+
                 osc.connect(gain);
                 gain.connect(ctx.destination);
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(100, ctx.currentTime);
-                osc.frequency.linearRampToValueAtTime(320, ctx.currentTime + 0.3);
-                gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+
+                // 蓄力集氣包絡線：音量隨時間快速凝聚漸強
+                gain.gain.setValueAtTime(0.001, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.54);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+
+                lfo.start();
                 osc.start();
-                osc.stop(ctx.currentTime + 0.3);
-            } 
+                lfo.stop(ctx.currentTime + 0.6);
+                osc.stop(ctx.currentTime + 0.6);
+            }
             else if (type === 'break') {
                 // 破壞磚頭：碎裂感低頻爆破聲 (冷卻 100ms)
                 if (now - (lastSFXPlayTimes['break'] || 0) < 100) return;
@@ -725,25 +840,41 @@
                 osc.type = 'sawtooth';
                 osc.frequency.setValueAtTime(180, ctx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.15);
-                gain.gain.setValueAtTime(0.25, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.4, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
                 osc.start();
                 osc.stop(ctx.currentTime + 0.15);
             }
-            else if (type === 'signal') {
-                // 獲得訊號：高頻嗶聲
+             else if (type === 'signal') {
+                // 深海潛水艇聲納探測 (Submarine Sonar Ping) - 悠長深邃版
+                // 特點：極銳利金屬發音，隨後伴隨長達 2.2 秒的水下殘響迴盪聲
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
+                const filter = ctx.createBiquadFilter();
+
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(600, ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.35);
-                gain.gain.setValueAtTime(0.12, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+                osc.frequency.setValueAtTime(1024, ctx.currentTime); // 基礎 1024Hz 聲納頻率
+                // 放慢頻率下滑的速度 (從 0.15s 延緩至 0.4s)，加強聲納波向外傳播的擴散感
+                osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.4);
+
+                // 帶通濾波器保持高共鳴度 (Q=12) 鎖定 1000Hz 創造水下空靈感
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(1000, ctx.currentTime);
+                filter.Q.setValueAtTime(12, ctx.currentTime);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+
+                // 調整音量衰減線，將尾音拉長至 2.2 秒 (原為 1.2 秒)
+                gain.gain.setValueAtTime(0, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.02); // 瞬發起音
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.2); // 2.2s 漫長水下消逝
+                
+                // 配合尾音時間，將發聲器停止時間延後到 2.25 秒
                 osc.start();
-                osc.stop(ctx.currentTime + 0.35);
-            } 
+                osc.stop(ctx.currentTime + 2.25);
+            }
             else if (type === 'speed') {
                 // 加速地板：急促加速滑音 (冷卻 300ms)
                 if (now - (lastSFXPlayTimes['speed'] || 0) < 300) return;
@@ -756,7 +887,7 @@
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(320, ctx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(850, ctx.currentTime + 0.2);
-                gain.gain.setValueAtTime(0.12, ctx.currentTime);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
                 osc.start();
                 osc.stop(ctx.currentTime + 0.2);
@@ -770,7 +901,7 @@
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(587.33, ctx.currentTime);
                 osc.frequency.setValueAtTime(880, ctx.currentTime + 0.07);
-                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
                 osc.start();
                 osc.stop(ctx.currentTime + 0.35);
@@ -782,19 +913,17 @@
                 const gain1 = ctx.createGain();
                 const gain2 = ctx.createGain();
 
-                // 第一聲：清脆高音 
                 osc1.type = 'sine';
-                osc1.frequency.setValueAtTime(987.77, ctx.currentTime); // B5 音高
+                osc1.frequency.setValueAtTime(987.77, ctx.currentTime);
                 gain1.gain.setValueAtTime(0, ctx.currentTime);
-                gain1.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.04);
+                gain1.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.04);
                 gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
 
-                // 第二聲：稍高且有層次感，微幅延後 0.08 秒起音
                 osc2.type = 'sine';
-                osc2.frequency.setValueAtTime(1318.51, ctx.currentTime + 0.08); // E6 音高
+                osc2.frequency.setValueAtTime(1318.51, ctx.currentTime + 0.08);
                 gain2.gain.setValueAtTime(0, ctx.currentTime);
                 gain2.gain.setValueAtTime(0, ctx.currentTime + 0.08);
-                gain2.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.12);
+                gain2.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.12);
                 gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
 
                 osc1.connect(gain1);
@@ -807,6 +936,125 @@
                 osc1.stop(ctx.currentTime + 0.6);
                 osc2.stop(ctx.currentTime + 0.6);
             }
+            else if (type === 'success') {
+                // 成功拼對單字：亮麗上升大調和弦音 (約 0.8 秒)
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, index) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, ctx.currentTime + index * 0.08);
+                    
+                    gain.gain.setValueAtTime(0, ctx.currentTime);
+                    gain.gain.setValueAtTime(0, ctx.currentTime + index * 0.08);
+                    gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + index * 0.08 + 0.04);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + index * 0.08 + 0.4);
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime + index * 0.08);
+                    osc.stop(ctx.currentTime + index * 0.08 + 0.45);
+                });
+            }
+            else if (type === 'reset') {
+                // 重置本關：向下俯衝的數位感音效 (約 0.35 秒)
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.35);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.35);
+            }
+            else if (type === 'home') {
+                // 返回首頁：向下的退場滑音和弦 (約 0.4 秒)
+                const osc1 = ctx.createOscillator();
+                const osc2 = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(783.99, ctx.currentTime);
+                osc1.frequency.exponentialRampToValueAtTime(523.25, ctx.currentTime + 0.4);
+                
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(587.33, ctx.currentTime);
+                osc2.frequency.exponentialRampToValueAtTime(392.00, ctx.currentTime + 0.4);
+
+                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(ctx.destination);
+                osc1.start();
+                osc2.start();
+                osc1.stop(ctx.currentTime + 0.4);
+                osc2.stop(ctx.currentTime + 0.4);
+            }
+            else if (type === 'altar') {
+                // 進入祭壇藍框：魔法般亮麗的和弦閃爍 (約 0.4 秒)
+                const freqs = [523.25, 659.25, 783.99, 987.77];
+                freqs.forEach((f, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(f, ctx.currentTime + i * 0.05);
+                    gain.gain.setValueAtTime(0, ctx.currentTime);
+                    gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.05);
+                    gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + i * 0.05 + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.05 + 0.3);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime + i * 0.05);
+                    osc.stop(ctx.currentTime + i * 0.05 + 0.3);
+                });
+            }
+            else if (type === 'swap') {
+                // 字母交換：短促清脆的木片碰撞/滑動聲 (約 0.08 秒)
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(220, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.08);
+            }
+
+            else if (type === 'fail') {
+                // 遊戲結束/失敗：經典街機下行悲傷小調音 (約 1.0 秒)
+                const notes = [311.13, 293.66, 261.63, 196.00]; // Eb4, D4, C4, G3 (悲傷下行)
+                notes.forEach((freq, index) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    const filter = ctx.createBiquadFilter();
+
+                    osc.type = 'sawtooth'; // 沮喪的微鋸齒波
+                    osc.frequency.setValueAtTime(freq, ctx.currentTime + index * 0.18);
+                    
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(450, ctx.currentTime); // 悶沉高頻，增加悲傷感
+
+                    gain.gain.setValueAtTime(0, ctx.currentTime);
+                    gain.gain.setValueAtTime(0, ctx.currentTime + index * 0.18);
+                    gain.gain.linearRampToValueAtTime(2, ctx.currentTime + index * 0.18 + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + index * 0.18 + 0.5);
+
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    osc.start(ctx.currentTime + index * 0.18);
+                    osc.stop(ctx.currentTime + index * 0.18 + 0.55);
+                });
+            }
+
         } catch (e) {
             console.warn("全域音效播放失敗:", e);
         }
@@ -846,6 +1094,9 @@
         drillTime: 0,
         signalTime: 0,
         boostTime: 0,
+        inAltarLastFrame: false, // 紀錄上一幀是否在祭壇內
+        wasCollidingLastFrame: false, // 紀錄上一幀是否撞牆
+        isWinAnimating: false, // 新增：勝利動畫播放中鎖定，防止重複觸發
       };
 
       const SAFE_ZONE = 160;
@@ -871,6 +1122,12 @@
     
 
       window.addEventListener("keydown", (e) => {
+        // 新增：若勝利動畫正在播放，絕對鎖定所有鍵盤輸入，玩家什麼都不能做！
+        if (state.isWinAnimating) {
+          e.preventDefault();
+          return;
+        }
+
         // 要求 1: textarea 聚焦時鎖定所有遊戲快捷鍵
         if (document.activeElement.tagName === "TEXTAREA") return;
 
@@ -964,6 +1221,7 @@
           updateMenuVisuals();
         }
         if (state.isSortingMode) {
+          if (state.isWinAnimating) return; // 勝利動畫期間鎖定鍵盤排序
           const move = dir === "Left" || dir === "Up" ? -1 : 1;
           const nextIdx = Math.max(
             0,
@@ -975,6 +1233,7 @@
               state.inventory[state.kbSortIdx],
             ];
             state.kbLockedIdx = nextIdx;
+            playSFX('swap'); // 播放鍵盤模式字母交換音效
           }
           state.kbSortIdx = nextIdx;
           updateUI();
@@ -1051,6 +1310,12 @@
         state.signalTime = 0;
         state.boostTime = 0;
         document.getElementById("current-target").innerText = state.targetWord;
+        
+        // 更新 HUD 的累積單字數量顯示
+        const hudCount = document.getElementById("word-count-hud");
+        if (hudCount) {
+            hudCount.innerText = state.completedWords.length;
+        }
 
         const chars = state.targetWord.replace(/\s+/g, "").split("");
         chars.forEach((char) => {
@@ -1079,9 +1344,12 @@
       }
 
       // --- 拖曳與 UI ---
+      // --- 拖曳與觸控 UI (支援滑鼠與手機平板手指拖曳) ---
       function initDragEvents(slot, index) {
+        // --- 1. 電腦滑鼠拖曳 (Desktop Mouse Drag & Drop) ---
         slot.draggable = true;
         slot.ondragstart = (e) => {
+          if (state.isWinAnimating) return e.preventDefault(); // 勝利動畫期間鎖定拖曳
           if (
             !document
               .getElementById("inventory-hud")
@@ -1093,11 +1361,13 @@
         };
         slot.ondragover = (e) => e.preventDefault();
         slot.ondrop = () => {
+          if (state.isWinAnimating) return; // 勝利動畫期間鎖定放置
           if (state.draggedIndex !== null && state.draggedIndex !== index) {
             [state.inventory[state.draggedIndex], state.inventory[index]] = [
               state.inventory[index],
               state.inventory[state.draggedIndex],
             ];
+            playSFX('swap'); // 播放滑鼠拖曳字母交換音效
             updateUI();
             checkWin(); // 即時判定
           }
@@ -1106,6 +1376,68 @@
           slot.classList.remove("dragging");
           state.draggedIndex = null;
         };
+
+        // --- 2. 手機/平板手指觸控拖曳 (Mobile/Tablet Touch Drag & Drop) ---
+        let lastTouchTarget = null; // 紀錄手指當前滑過的格子元素
+
+        slot.addEventListener('touchstart', (e) => {
+          if (state.isWinAnimating) return;
+          // 只有在祭壇內 (藍框框) 才能啟用觸控排序
+          if (!document.getElementById("inventory-hud").classList.contains("altar-active")) return;
+          
+          state.draggedIndex = index;
+          slot.classList.add("dragging");
+          
+          // 阻止預設瀏覽器拖曳行為 (防止 iOS/Android 網頁畫面產生滾動回彈)
+          e.preventDefault();
+        }, { passive: false });
+
+        slot.addEventListener('touchmove', (e) => {
+          if (state.isWinAnimating || state.draggedIndex === null) return;
+          e.preventDefault(); // 鎖定螢幕滾動
+
+          const touch = e.touches[0];
+          // 核心：利用螢幕座標反向找出手指下方的 DOM 元素
+          const el = document.elementFromPoint(touch.clientX, touch.clientY);
+          
+          // 清除所有格子的觸控指引高亮
+          document.querySelectorAll("#inventory-hud .slot").forEach(s => s.classList.remove("kb-focus"));
+          
+          if (el && el.classList.contains("slot")) {
+              el.classList.add("kb-focus"); // 套用高亮效果，引導玩家知道目前手指對準哪裡
+              lastTouchTarget = el;
+          } else {
+              lastTouchTarget = null;
+          }
+        }, { passive: false });
+
+        slot.addEventListener('touchend', (e) => {
+          if (state.isWinAnimating) return;
+          slot.classList.remove("dragging");
+          
+          // 清理高亮視覺
+          document.querySelectorAll("#inventory-hud .slot").forEach(s => s.classList.remove("kb-focus"));
+
+          if (state.draggedIndex !== null && lastTouchTarget) {
+              // 將 DOM 陣列化來取得終點格子的索引值
+              const slots = Array.from(document.querySelectorAll("#inventory-hud .slot"));
+              const targetIndex = slots.indexOf(lastTouchTarget);
+
+              if (targetIndex !== -1 && targetIndex !== state.draggedIndex) {
+                  // 執行兩格位置交換
+                  [state.inventory[state.draggedIndex], state.inventory[targetIndex]] = [
+                      state.inventory[targetIndex],
+                      state.inventory[state.draggedIndex]
+                  ];
+                  playSFX('swap'); // 播放觸控交換音效
+                  updateUI();
+                  checkWin(); // 判定勝負
+              }
+          }
+          // 重置狀態
+          state.draggedIndex = null;
+          lastTouchTarget = null;
+        });
       }
 
       function updateUI() {
@@ -1121,7 +1453,8 @@
       }
 
       function update(dt) {
-        if (state.screen !== "playing" || state.isPaused) return;
+        // 若正在播放勝利動畫，則完全停止角色位移與物理更新，原地定格
+        if (state.screen !== "playing" || state.isPaused || state.isWinAnimating) return;
 
         if (state.drillTime > 0) {
           state.drillTime -= dt;
@@ -1134,9 +1467,16 @@
         if (state.boostTime > 0) state.boostTime -= dt;
 
         const isAltar = Math.hypot(state.worldX, state.worldY) < 80;
-        document
-          .getElementById("inventory-hud")
-          .classList.toggle("altar-active", isAltar);
+        const invHud = document.getElementById("inventory-hud");
+        if (invHud) {
+            invHud.classList.toggle("altar-active", isAltar);
+        }
+
+        // 玩家踏入藍色框框瞬間，撥放拼字功能啟動音效
+        if (isAltar && !state.inAltarLastFrame) {
+            playSFX('altar');
+        }
+        state.inAltarLastFrame = isAltar; // 紀錄當前狀態
 
         // 要求 2: 在祭壇內即時判定勝負
         if (isAltar) checkWin();
@@ -1195,14 +1535,19 @@
             }
         }
 
-        // 當玩家按下移動鍵，且位置被牆壁擋住時，播放碰撞音效
+        // 當玩家按下移動鍵，且首次撞擊牆壁時，播放一次清脆碰擊聲
         if (hitWall && (fx !== 0 || fy !== 0)) {
-            playSFX('wall');
+            if (!state.wasCollidingLastFrame) {
+                playSFX('wall'); // 首次撞上：播放
+            }
+            state.wasCollidingLastFrame = true; // 鎖定狀態，按住不放時不再觸發
+        } else {
+            state.wasCollidingLastFrame = false; // 沒在撞牆或沒按鍵：解除鎖定，允許下次碰撞發聲
         }
 
         state.speedPads.forEach((p) => {
           if (Math.hypot(p.x - state.worldX, p.y - state.worldY) < 30) {
-            playSFX('speed'); // 直接調用音效（由 playSFX 內部的冷卻保護機制控管頻率）
+            playSFX('speed'); // 播放加速地板音效
             state.boostTime = 3000;
           }
         });
@@ -1248,16 +1593,60 @@
       }
 
       function checkWin() {
+        // 如果正在播放勝利動畫，則直接跳過，防止計時器與動畫衝突
+        if (state.isWinAnimating) return;
+
         if (state.inventory.join("") === state.targetWord.replace(/\s+/g, "")) {
-          state.completedWords.push(state.targetWord);
+          state.isWinAnimating = true; // 啟動過關與輸入物理鎖定
+          
+          // 關鍵修復：將拼對的單字記錄到已解鎖陣列中
+          state.completedWords.push(state.targetWord); 
+
+          // 絕對鎖定：清空所有鍵盤與虛擬搖桿狀態，防止角色在此時位移
+          state.keys = {}; 
+          state.joystick.active = false;
+          state.joystick.vx = 0;
+          state.joystick.vy = 0;
+          const jStickEl = document.getElementById('joystick-stick');
+          if (jStickEl) {
+              jStickEl.style.transform = 'translate(-50%, -50%)';
+          }
+
           state.timeLeft += 60;
+          
+          playSFX('success'); // 播放拼對單字的升音階和弦音效
+          
+          // 產生過關加時間浮空提示
           const pop = document.createElement("div");
           pop.className = "time-plus-pop";
           pop.innerText = "+60s";
-          document.getElementById("timer-wrapper").appendChild(pop);
+          const timerWrapper = document.getElementById("timer-wrapper");
+          if (timerWrapper) {
+              timerWrapper.appendChild(pop);
+          }
           setTimeout(() => pop.remove(), 1000);
-          state.isSortingMode = false;
-          initLevel();
+
+          // 核心效果：從左到右，逐格點亮黃色 (每 150 毫秒一格)
+          const slots = document.querySelectorAll("#inventory-hud .slot");
+          slots.forEach((slot, index) => {
+              setTimeout(() => {
+                  slot.classList.add("win-highlight");
+                  playSFX('swap'); // 伴隨清脆的滴答聲
+              }, index * 150);
+          });
+
+          // 視覺波浪點亮完成後，多停留 400 毫秒
+          const visualCompletionTime = (slots.length * 150) + 400;
+
+          // 當視覺波浪完成時，觸發自動英文發音
+          setTimeout(() => {
+              // 朗讀單字，語音完全讀完的瞬間，才會執行箭頭內部的過關與解鎖程序
+              speakWord(state.targetWord, () => {
+                  state.isSortingMode = false;
+                  state.isWinAnimating = false; // 動畫與朗讀結束：完全解除鍵盤與移動鎖定！
+                  initLevel(); // 進入下一個單字回合
+              });
+          }, visualCompletionTime);
         }
       }
 
@@ -1393,13 +1782,36 @@
               .classList.toggle("selected", state.menuIdx === i),
           );
           const list = document.getElementById("history-list");
-          list.innerHTML =
-            state.completedWords
-              .map(
-                (w) =>
-                  `<div class="history-item"><div class="history-en">${w}</div><div class="history-zh">${WORD_DB[w]?.zh || "自訂"}</div></div>`,
-              )
-              .join("") || "尚未拼出單字";
+          if (list) {
+              list.innerHTML =
+                state.completedWords
+                  .map(
+                    (w) =>
+                      `<div class="history-item" style="display: flex; justify-content: space-between; align-items: center;">
+                         <div>
+                           <div class="history-en" style="font-weight: 800; font-size: 16px; color: #fff;">${w}</div>
+                           <div class="history-zh" style="color: var(--accent); font-size: 13px; margin-top: 2px;">${WORD_DB[w]?.zh || "自訂"}</div>
+                         </div>
+                         <!-- 🔊 語音發音按鈕 -->
+                         <button 
+                           onclick="speakWord('${w.replace(/'/g, "\\'")}')" 
+                           style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--accent); padding: 5px; outline: none; transition: 0.1s;"
+                           onmouseover="this.style.transform='scale(1.2)'"
+                           onmouseout="this.style.transform='scale(1)'"
+                           title="播放美式英語讀音"
+                         >
+                           🔊
+                         </button>
+                       </div>`
+                  )
+                  .join("") || "尚未拼出單字";
+          }
+          
+          // 更新暫停選單中的累積解鎖單字量
+          const menuCount = document.getElementById("word-count-menu");
+          if (menuCount) {
+              menuCount.innerText = state.completedWords.length;
+          }
         } else if (state.screen === "game-over-screen") {
           [0, 1].forEach((i) =>
             document
@@ -1409,30 +1821,162 @@
         }
       }
 
-      // 要求 1: 解析修正，更寬鬆的匹配邏輯
-      function handleCustomStart() {
-        const input = document.getElementById("custom-input").value;
-        const lines = input.split("\n").filter((l) => l.trim().length > 0);
-        const newDB = {};
-        lines.forEach((line) => {
-          const parts = line.trim().split(/\s+/);
-          if (parts.length >= 1) {
-            const en = parts[0].toUpperCase();
-            const zh = parts[1] || "自訂";
-            const pos = parts[2] || "";
-            newDB[en] = { zh, pos };
+      // 將目前已載入的單字資料庫轉換格式，寫入自製清單預覽框中
+      function populateTextareaFromDB() {
+          const txtArea = document.getElementById("custom-input");
+          if (txtArea && WORD_DB) {
+              txtArea.value = Object.keys(WORD_DB).map(en => {
+                  const info = WORD_DB[en];
+                  return `${en} ${info.zh} ${info.pos || ""}`.trim();
+              }).join("\n");
           }
-        });
-        if (Object.keys(newDB).length === 0) return alert("解析失敗");
-        WORD_DB = newDB;
-        WORD_POOL = Object.keys(newDB);
-        startGame();
+      }
+
+      // 從一般 Google 試算表分享連結中，擷取 Spreadsheet ID 並轉換為萬用跨網域 CSV 載點
+      function convertToCSVUrl(inputUrl) {
+          if (!inputUrl) return "";
+          const match = inputUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+          if (match && match[1]) {
+              return `https://docs.google.com/spreadsheets/d/${match[1]}/gviz/tq?tqx=out:csv`;
+          }
+          return inputUrl; 
+      }
+
+      // 解析 CSV 格式為遊戲單字庫結構
+      function parseCSVToDB(csvText) {
+          const lines = csvText.split(/\r?\n/).filter(l => l.trim().length > 0);
+          const newDB = {};
+          lines.forEach(line => {
+              const parts = line.split(',').map(p => p.replace(/^["']|["']$/g, '').trim());
+              if (parts.length >= 1 && parts[0].length > 0) {
+                  const en = parts[0].toUpperCase();
+                  if (en === "ENGLISH" || en === "WORD" || en === "單字") return;
+                  const zh = parts[1] || "自訂";
+                  const pos = parts[2] || "";
+                  newDB[en] = { zh, pos };
+              }
+          });
+          return newDB;
+      }
+
+      // 同步線上資料並保存快取
+      async function syncCloudSheets(inputUrl, showFeedback = false) {
+          const statusText = document.getElementById("sync-status");
+          const urlInput = document.getElementById("sheets-url-input");
+          if (urlInput) urlInput.value = inputUrl;
+
+          const csvUrl = convertToCSVUrl(inputUrl);
+          if (!csvUrl) return false;
+
+          try {
+              if (statusText) statusText.style.color = "#ffcc00";
+              if (statusText) statusText.innerText = "狀態：正在同步雲端單字庫...";
+              
+              const res = await fetch(csvUrl);
+              if (!res.ok) throw new Error("下載失敗");
+              
+              const csvText = await res.text();
+              const parsedDB = parseCSVToDB(csvText);
+              
+              if (Object.keys(parsedDB).length === 0) throw new Error("欄位解析為空");
+
+              // 更新遊戲全域單字庫
+              WORD_DB = parsedDB;
+              WORD_POOL = Object.keys(parsedDB);
+
+              // 儲存網址設定至本地 LocalStorage
+              localStorage.setItem("scavenger_sheets_url", inputUrl);
+              localStorage.setItem("scavenger_cached_db", JSON.stringify(parsedDB));
+
+              // 自動同步至畫面的文字預覽框中
+              populateTextareaFromDB();
+
+              if (statusText) statusText.style.color = "#00ff88";
+              if (statusText) statusText.innerText = `狀態：已同步最新雲端資料 (共 ${WORD_POOL.length} 個單字)`;
+              return true;
+          } catch (e) {
+              console.warn("雲端同步失敗，改嘗試載入本機快取:", e);
+              const cached = localStorage.getItem("scavenger_cached_db");
+              if (cached) {
+                  const parsedDB = JSON.parse(cached);
+                  WORD_DB = parsedDB;
+                  WORD_POOL = Object.keys(parsedDB);
+                  
+                  // 同步至畫面文字預覽框中
+                  populateTextareaFromDB();
+
+                  if (statusText) statusText.style.color = "#ff4444";
+                  if (statusText) statusText.innerText = `狀態：連線失敗，已載入本地備份資料 (共 ${WORD_POOL.length} 個單字)`;
+                  return true;
+              } else {
+                  if (statusText) statusText.style.color = "#ff4444";
+                  if (statusText) statusText.innerText = "狀態：雲端同步失敗且無本地快取";
+                  if (showFeedback) alert("無法讀取試算表。請確認您的試算表共用設定為『知道連結的任何人均可檢視』");
+                  return false;
+              }
+          }
+      }
+
+      // --- 按鈕互動處理函數 ---
+
+      // 點擊【匯入】按鈕：同步線上網址
+      async function handleSheetImport() {
+          const urlInput = document.getElementById("sheets-url-input").value.trim();
+          if (!urlInput) return alert("請先貼上試算表公開共用連結");
+          playSFX('mode');
+          const success = await syncCloudSheets(urlInput, true);
+          if (success) {
+              localStorage.removeItem("scavenger_manual_input");
+          }
+      }
+
+      // 點擊【🔄】按鈕：重新整理狀態刷新
+      async function handleSheetRefresh() {
+          const urlInput = document.getElementById("sheets-url-input").value.trim();
+          if (!urlInput) return alert("目前沒有可刷新的試算表網址");
+          playSFX('reset');
+          await syncCloudSheets(urlInput, true);
+      }
+
+      // 點擊【確認單字無誤，開始遊戲】按鈕：以預覽框的內容正式開局
+      function handleStartAfterReview() {
+          const manualInput = document.getElementById("custom-input").value.trim();
+          if (!manualInput) return alert("單字清單不可以為空白");
+          
+          const lines = manualInput.split("\n").filter((l) => l.trim().length > 0);
+          const newDB = {};
+          lines.forEach((line) => {
+            const parts = line.trim().split(/\s+/);
+            if (parts.length >= 1) {
+              const en = parts[0].toUpperCase();
+              const zh = parts[1] || "自訂";
+              const pos = parts[2] || "";
+              newDB[en] = { zh, pos };
+            }
+          });
+          if (Object.keys(newDB).length === 0) return alert("單字解析失敗，請檢查文字格式是否正確");
+          
+          WORD_DB = newDB;
+          WORD_POOL = Object.keys(newDB);
+          
+          const urlInput = document.getElementById("sheets-url-input").value.trim();
+          if (urlInput) {
+              localStorage.setItem("scavenger_sheets_url", urlInput);
+          } else {
+              localStorage.removeItem("scavenger_sheets_url");
+              localStorage.setItem("scavenger_manual_input", manualInput);
+          }
+          localStorage.setItem("scavenger_cached_db", JSON.stringify(newDB));
+          
+          playSFX('mode');
+          startGame();
       }
 
       function selectMode(m) { 
         playSFX('mode'); // 播放目錄頁專屬音效
         if(m === 'preset') startGame(); 
-    }
+      }
+
       function startGame() {
         changeScreen("playing");
         state.worldX = 0;
@@ -1441,23 +1985,36 @@
         state.completedWords = [];
         initLevel();
       }
+
       function resetCurrentLevel() {
+        playSFX('reset'); // 播放重置關卡音效
         state.timeLeft = 60;
         changeScreen("playing");
         initLevel();
       }
+
+      function handleGoHome() {
+          playSFX('home'); // 播放退場首頁音效
+          setTimeout(() => {
+              location.reload(); // 延遲 300 毫秒後再重新整理，確保音效播完
+          }, 300);
+      }
+
       function restartGame() {
         startGame();
       }
+
       function toggleMenu() {
         if (state.screen === "playing") changeScreen("system-menu");
         else if (state.screen === "system-menu") changeScreen("playing");
       }
+
       function resize() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
       }
 
+      // --- 定時器計時與提示器 ---
       setInterval(() => {
         if (state.screen === "playing" && !state.isPaused) {
           state.timeLeft--;
@@ -1468,15 +2025,119 @@
               playSFX('warning');
           }
           
-          if (state.timeLeft <= 0) changeScreen("game-over-screen");
+          if (state.timeLeft <= 0) {
+              playSFX('fail'); // 播放遊戲結束/失敗音效
+              changeScreen("game-over-screen");
+          }
         }
       }, 1000);
+
+      // 遊戲每次打開時，自動呼叫的同步啟動程序
+      function autoLoadAndSync() {
+          const savedUrl = localStorage.getItem("scavenger_sheets_url");
+          const savedManualText = localStorage.getItem("scavenger_manual_input");
+          
+          if (savedManualText) {
+              const txtArea = document.getElementById("custom-input");
+              if (txtArea) txtArea.value = savedManualText;
+          }
+
+          if (savedUrl) {
+              syncCloudSheets(savedUrl);
+          } else {
+              const cached = localStorage.getItem("scavenger_cached_db");
+              if (cached) {
+                  const parsedDB = JSON.parse(cached);
+                  WORD_DB = parsedDB;
+                  WORD_POOL = Object.keys(parsedDB);
+                  populateTextareaFromDB();
+              }
+          }
+      }
+
+      // --- TTS 語音合成美式發音控制 (更新：支援播放完畢回呼函數) ---
+      function speakWord(word, onEndCallback) {
+          if ('speechSynthesis' in window) {
+              // 取消當前可能正在播放的其他發音
+              window.speechSynthesis.cancel();
+              
+              const cleanWord = word.replace(/_/g, ' ');
+              const utterance = new SpeechSynthesisUtterance(cleanWord);
+              utterance.lang = 'en-US'; 
+              utterance.rate = 0.85;    
+              
+              // 如果有傳入結束後的回呼函數
+              if (onEndCallback) {
+                  let hasTriggeredEnd = false;
+
+                  // 安全鎖：若瀏覽器語音系統卡死，2.5秒內一定強行切換下一關
+                  const safetyFallback = setTimeout(() => {
+                      if (!hasTriggeredEnd) {
+                          hasTriggeredEnd = true;
+                          onEndCallback();
+                      }
+                  }, 2500);
+
+                  // 正常播放完畢事件
+                  utterance.onend = () => {
+                      if (!hasTriggeredEnd) {
+                          hasTriggeredEnd = true;
+                          clearTimeout(safetyFallback);
+                          onEndCallback();
+                      }
+                  };
+
+                  // 播放出錯事件
+                  utterance.onerror = () => {
+                      if (!hasTriggeredEnd) {
+                          hasTriggeredEnd = true;
+                          clearTimeout(safetyFallback);
+                          onEndCallback();
+                      }
+                  };
+              }
+              
+              window.speechSynthesis.speak(utterance);
+          } else {
+              console.warn("您的瀏覽器不支援 SpeechSynthesis 語音合成發音功能");
+              if (onEndCallback) onEndCallback();
+          }
+      }
+
+      // --- GitHub Pages (HTTPS) 專用：瀏覽器自動播放限制全域解鎖器 ---
+      function unlockAudio() {
+          try {
+              if (!gameAudioCtx) {
+                  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                  if (AudioContextClass) {
+                      gameAudioCtx = new AudioContextClass();
+                  }
+              }
+              if (gameAudioCtx && gameAudioCtx.state === 'suspended') {
+                  gameAudioCtx.resume().then(() => {
+                      window.removeEventListener('click', unlockAudio);
+                      window.removeEventListener('keydown', unlockAudio);
+                      window.removeEventListener('touchstart', unlockAudio);
+                  });
+              }
+          } catch (e) {
+              console.warn("自動音效解鎖失敗:", e);
+          }
+      }
+      
+      window.addEventListener('click', unlockAudio);
+      window.addEventListener('keydown', unlockAudio);
+      window.addEventListener('touchstart', unlockAudio);
+
+      // --- 統一初始化與啟動程序 ---
       window.addEventListener("resize", resize);
       resize();
       
-      // 啟動遊戲渲染與邏輯主循環
+      // 先加載並自動同步數據
+      autoLoadAndSync();
+
+      // 僅啟動一次遊戲渲染與邏輯循環
       draw();
-    </script>
     </script>
   </body>
 </html>

@@ -2021,74 +2021,87 @@
     }
 
     // --- TTS 語音合成美式發音控制 (更新：支援播放完畢回呼函數) ---
-    function speakWord(word, onEndCallback) {
-      if ('speechSynthesis' in window) {
-        // 取消當前可能正在播放的其他發音
-        window.speechSynthesis.cancel();
+          // --- TTS 語音合成美式發音控制 ---
+      let activeUtterance = null; // 全域變數，防止 iOS Safari 垃圾回收機制 (Garbage Collection) 提前銷毀語音物件
 
-        const cleanWord = word.replace(/_/g, ' ');
-        const utterance = new SpeechSynthesisUtterance(cleanWord);
-        utterance.lang = 'en-US';
-        utterance.rate = 0.85;
+      function speakWord(word, onEndCallback) {
+          if ('speechSynthesis' in window) {
+              try {
+                  // 取消當前可能正在播放的其他發音
+                  window.speechSynthesis.cancel();
+              } catch (e) {}
+              
+              const cleanWord = word.replace(/_/g, ' ');
+              // 將 utterance 賦值給全域變數，使其保持引用，避免被回收
+              activeUtterance = new SpeechSynthesisUtterance(cleanWord);
+              activeUtterance.lang = 'en-US'; 
+              activeUtterance.rate = 0.85;    
+              
+              if (onEndCallback) {
+                  let hasTriggeredEnd = false;
 
-        // 如果有傳入結束後的回呼函數
-        if (onEndCallback) {
-          let hasTriggeredEnd = false;
+                  // 安全鎖：若語音卡死，2.5秒內強行切換下一關
+                  const safetyFallback = setTimeout(() => {
+                      if (!hasTriggeredEnd) {
+                          hasTriggeredEnd = true;
+                          onEndCallback();
+                      }
+                  }, 2500);
 
-          // 安全鎖：若瀏覽器語音系統卡死，2.5秒內一定強行切換下一關
-          const safetyFallback = setTimeout(() => {
-            if (!hasTriggeredEnd) {
-              hasTriggeredEnd = true;
-              onEndCallback();
-            }
-          }, 2500);
+                  activeUtterance.onend = () => {
+                      if (!hasTriggeredEnd) {
+                          hasTriggeredEnd = true;
+                          clearTimeout(safetyFallback);
+                          onEndCallback();
+                      }
+                  };
 
-          // 正常播放完畢事件
-          utterance.onend = () => {
-            if (!hasTriggeredEnd) {
-              hasTriggeredEnd = true;
-              clearTimeout(safetyFallback);
-              onEndCallback();
-            }
-          };
-
-          // 播放出錯事件
-          utterance.onerror = () => {
-            if (!hasTriggeredEnd) {
-              hasTriggeredEnd = true;
-              clearTimeout(safetyFallback);
-              onEndCallback();
-            }
-          };
-        }
-
-        window.speechSynthesis.speak(utterance);
-      } else {
-        console.warn("您的瀏覽器不支援 SpeechSynthesis 語音合成發音功能");
-        if (onEndCallback) onEndCallback();
+                  activeUtterance.onerror = () => {
+                      if (!hasTriggeredEnd) {
+                          hasTriggeredEnd = true;
+                          clearTimeout(safetyFallback);
+                          onEndCallback();
+                      }
+                  };
+              }
+              
+              window.speechSynthesis.speak(activeUtterance);
+          } else {
+              console.warn("您的瀏覽器不支援 SpeechSynthesis 語音合成發音功能");
+              if (onEndCallback) onEndCallback();
+          }
       }
-    }
 
     // --- GitHub Pages (HTTPS) 專用：瀏覽器自動播放限制全域解鎖器 ---
-    function unlockAudio() {
-      try {
-        if (!gameAudioCtx) {
-          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-          if (AudioContextClass) {
-            gameAudioCtx = new AudioContextClass();
+          // --- 瀏覽器自動播放限制全域解鎖器 (Web Audio API + TTS) ---
+      function unlockAudio() {
+          try {
+              // 1. 初始化並解鎖 Web Audio Context (音效)
+              if (!gameAudioCtx) {
+                  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                  if (AudioContextClass) {
+                      gameAudioCtx = new AudioContextClass();
+                  }
+              }
+              if (gameAudioCtx && gameAudioCtx.state === 'suspended') {
+                  gameAudioCtx.resume();
+              }
+              
+              // 2. 針對行動裝置 (特別是 iOS Safari) 的手勢限制，播放一個無聲 TTS 以解鎖未來的發音權限
+              if ('speechSynthesis' in window) {
+                  const silentUtterance = new SpeechSynthesisUtterance(' ');
+                  silentUtterance.volume = 0; // 靜音
+                  window.speechSynthesis.speak(silentUtterance);
+              }
+
+              // 成功解鎖一次後，立刻移除監聽器，避免後續重複執行造成效能耗損
+              window.removeEventListener('click', unlockAudio);
+              window.removeEventListener('keydown', unlockAudio);
+              window.removeEventListener('touchstart', unlockAudio);
+          } catch (e) {
+              console.warn("自動音效與 TTS 發音權限解鎖失敗:", e);
           }
-        }
-        if (gameAudioCtx && gameAudioCtx.state === 'suspended') {
-          gameAudioCtx.resume().then(() => {
-            window.removeEventListener('click', unlockAudio);
-            window.removeEventListener('keydown', unlockAudio);
-            window.removeEventListener('touchstart', unlockAudio);
-          });
-        }
-      } catch (e) {
-        console.warn("自動音效解鎖失敗:", e);
       }
-    }
 
     window.addEventListener('click', unlockAudio);
     window.addEventListener('keydown', unlockAudio);

@@ -144,6 +144,34 @@
       display: block;
     }
 
+    /* 動態隨選搖桿樣式 */
+    #dynamic-joystick {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      pointer-events: none;
+      display: none; /* 平時隱藏 */
+      z-index: 1000;
+      transform: translate(-50%, -50%); /* 以中心點定位 */
+      backdrop-filter: blur(5px);
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+    #dynamic-stick {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 40px;
+      height: 40px;
+      background: var(--accent);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      box-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
+    }
+
 
     /* 背包區域 */
     #inventory-hud {
@@ -540,6 +568,10 @@
 
     <!-- 4. 遊戲 HUD -->
     <div id="game-hud">
+      <!-- 動態隨選搖桿 -->
+      <div id="dynamic-joystick">
+        <div id="dynamic-stick"></div>
+      </div>
       <div id="hud-top">
         <div id="target-display" style="
               background: rgba(0, 210, 255, 0.1);
@@ -1184,58 +1216,98 @@
       }
     }
 
-    // --- 虛擬搖桿 ---
-    // --- 觸控螢幕直覺移動控制 ---
+    // --- 隨選動態追隨搖桿 (Dynamic Floating Joystick) ---
     let touchActive = false;
+    let startX = 0;
+    let startY = 0;
+    let joyEl = null;
+    let stickEl = null;
 
     function handleTouchMove(e) {
       if (!touchActive || state.screen !== "playing" || state.isPaused || state.isWinAnimating || state.isSortingMode) return;
-
-      // 取得第一個手指觸控點
+      
       const touch = e.touches[0];
-
-      // 以螢幕中心點（也就是角色始終定格的位置）為原點計算相對位移
-      const cx = window.innerWidth / 2;
-      const cy = window.innerHeight / 2;
-      const dx = touch.clientX - cx;
-      const dy = touch.clientY - cy;
+      const curX = touch.clientX;
+      const curY = touch.clientY;
+      
+      const dx = curX - startX;
+      const dy = curY - startY;
       const dist = Math.hypot(dx, dy);
 
-      // 設定移動方向與動態速度百分比 (距離角色越遠走得越快，最遠 100px 達極速)
-      if (dist > 15) { // 設有 15px 緩衝區防手震抖動
-        const speedFactor = Math.min(dist / 100, 1);
-        state.joystick.vx = (dx / dist) * speedFactor;
-        state.joystick.vy = (dy / dist) * speedFactor;
+      let stickX = dx;
+      let stickY = dy;
+
+      if (!joyEl) joyEl = document.getElementById("dynamic-joystick");
+      if (!stickEl) stickEl = document.getElementById("dynamic-stick");
+
+      // 若拉動距離超過 50px 限制，搖桿基座開始跟隨手指滑動 (Following Joystick)
+      if (dist > 50) {
+        const ux = dx / dist;
+        const uy = dy / dist;
+        
+        // 更新搖桿基座中心，使其與手指保持 50px 距離
+        startX = curX - ux * 50;
+        startY = curY - uy * 50;
+        
+        // 重新定位基座 DOM 元素
+        joyEl.style.left = `${startX}px`;
+        joyEl.style.top = `${startY}px`;
+        
+        // 搖桿頭固定拉到最大邊界
+        stickX = ux * 50;
+        stickY = uy * 50;
+        
+        state.joystick.vx = ux;
+        state.joystick.vy = uy;
       } else {
-        state.joystick.vx = 0;
-        state.joystick.vy = 0;
+        state.joystick.vx = dx / 50;
+        state.joystick.vy = dy / 50;
       }
+
+      // 移動搖桿搖桿頭 (相對於基座中心)
+      stickEl.style.transform = `translate(calc(-50% + ${stickX}px), calc(-50% + ${stickY}px))`;
     }
 
     window.addEventListener("touchstart", (e) => {
-      // 若不是遊玩中、處於暫停選單、過關動畫中，或者正開啟拼字排序模式，則忽略
       if (state.screen !== "playing" || state.isPaused || state.isWinAnimating || state.isSortingMode) return;
-
-      // 防禦機制：如果觸控點是在下方背包單字框、右上角選單或彈出面板上，不觸發角色移動
+      
+      // 防禦機制：點擊在 HUD 介面（如下方背包、右上選單、暫停視窗）上時，不觸發搖桿
       let target = e.target;
       while (target) {
-        if (target.id === "inventory-hud" || target.id === "menu-icon" || target.classList.contains("modal")) {
+        if (target.id === "inventory-hud" || target.id === "menu-icon" || target.classList.contains("modal") || target.classList.contains("history-panel")) {
           return;
         }
         target = target.parentElement;
       }
 
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+
+      if (!joyEl) joyEl = document.getElementById("dynamic-joystick");
+      if (!stickEl) stickEl = document.getElementById("dynamic-stick");
+
+      // 在觸控起點顯示動態搖桿
+      joyEl.style.left = `${startX}px`;
+      joyEl.style.top = `${startY}px`;
+      joyEl.style.display = "block";
+      
+      stickEl.style.transform = "translate(-50%, -50%)"; // 重置搖桿頭置中
+
       touchActive = true;
-      handleTouchMove(e);
     }, { passive: false });
 
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
 
-    // 當手指放開或觸控中斷時，立即停止角色移動
+    // 當手指放開或觸控中斷時，隱藏搖桿並停止角色移動
     const stopTouchMove = () => {
-      touchActive = false;
-      state.joystick.vx = 0;
-      state.joystick.vy = 0;
+      if (touchActive) {
+        touchActive = false;
+        if (!joyEl) joyEl = document.getElementById("dynamic-joystick");
+        joyEl.style.display = "none"; // 隱藏搖桿
+        state.joystick.vx = 0;
+        state.joystick.vy = 0;
+      }
     };
     window.addEventListener("touchend", stopTouchMove);
     window.addEventListener("touchcancel", stopTouchMove);
@@ -2021,92 +2093,78 @@
     }
 
     // --- TTS 語音合成美式發音控制 (更新：支援播放完畢回呼函數) ---
-          // --- TTS 語音合成美式發音控制 ---
-      let activeUtterance = null; // 全域變數，防止 iOS Safari 垃圾回收機制 (Garbage Collection) 提前銷毀語音物件
+    function speakWord(word, onEndCallback) {
+      if ('speechSynthesis' in window) {
+        // 取消當前可能正在播放的其他發音
+        window.speechSynthesis.cancel();
 
-      function speakWord(word, onEndCallback) {
-          if ('speechSynthesis' in window) {
-              try {
-                  // 取消當前可能正在播放的其他發音
-                  window.speechSynthesis.cancel();
-              } catch (e) {}
-              
-              const cleanWord = word.replace(/_/g, ' ');
-              // 將 utterance 賦值給全域變數，使其保持引用，避免被回收
-              activeUtterance = new SpeechSynthesisUtterance(cleanWord);
-              activeUtterance.lang = 'en-US'; 
-              activeUtterance.rate = 0.85;    
-              
-              if (onEndCallback) {
-                  let hasTriggeredEnd = false;
+        const cleanWord = word.replace(/_/g, ' ');
+        const utterance = new SpeechSynthesisUtterance(cleanWord);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.85;
 
-                  // 安全鎖：若語音卡死，2.5秒內強行切換下一關
-                  const safetyFallback = setTimeout(() => {
-                      if (!hasTriggeredEnd) {
-                          hasTriggeredEnd = true;
-                          onEndCallback();
-                      }
-                  }, 2500);
+        // 如果有傳入結束後的回呼函數
+        if (onEndCallback) {
+          let hasTriggeredEnd = false;
 
-                  activeUtterance.onend = () => {
-                      if (!hasTriggeredEnd) {
-                          hasTriggeredEnd = true;
-                          clearTimeout(safetyFallback);
-                          onEndCallback();
-                      }
-                  };
+          // 安全鎖：若瀏覽器語音系統卡死，2.5秒內一定強行切換下一關
+          const safetyFallback = setTimeout(() => {
+            if (!hasTriggeredEnd) {
+              hasTriggeredEnd = true;
+              onEndCallback();
+            }
+          }, 2500);
 
-                  activeUtterance.onerror = () => {
-                      if (!hasTriggeredEnd) {
-                          hasTriggeredEnd = true;
-                          clearTimeout(safetyFallback);
-                          onEndCallback();
-                      }
-                  };
-              }
-              
-              window.speechSynthesis.speak(activeUtterance);
-          } else {
-              console.warn("您的瀏覽器不支援 SpeechSynthesis 語音合成發音功能");
-              if (onEndCallback) onEndCallback();
-          }
+          // 正常播放完畢事件
+          utterance.onend = () => {
+            if (!hasTriggeredEnd) {
+              hasTriggeredEnd = true;
+              clearTimeout(safetyFallback);
+              onEndCallback();
+            }
+          };
+
+          // 播放出錯事件
+          utterance.onerror = () => {
+            if (!hasTriggeredEnd) {
+              hasTriggeredEnd = true;
+              clearTimeout(safetyFallback);
+              onEndCallback();
+            }
+          };
+        }
+
+        window.speechSynthesis.speak(utterance);
+      } else {
+        console.warn("您的瀏覽器不支援 SpeechSynthesis 語音合成發音功能");
+        if (onEndCallback) onEndCallback();
       }
+    }
 
     // --- GitHub Pages (HTTPS) 專用：瀏覽器自動播放限制全域解鎖器 ---
-          // --- 瀏覽器自動播放限制全域解鎖器 (Web Audio API + TTS) ---
-            // --- 瀏覽器自動播放限制全域解鎖器 (Web Audio API + TTS) ---
-      function unlockAudio() {
-          try {
-              // 1. 初始化並解鎖 Web Audio Context (音效)
-              if (!gameAudioCtx) {
-                  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                  if (AudioContextClass) {
-                      gameAudioCtx = new AudioContextClass();
-                  }
-              }
-              if (gameAudioCtx && gameAudioCtx.state === 'suspended') {
-                  gameAudioCtx.resume();
-              }
-              
-              // 2. 使用有效的觸發點 (click/touchend) 手勢，播放極微弱音量的單字，解鎖 TTS 語音權限
-              if ('speechSynthesis' in window) {
-                  const silentUtterance = new SpeechSynthesisUtterance('ok');
-                  silentUtterance.volume = 0.01; // 極微弱音量，人耳聽不見，但能強迫瀏覽器啟動 TTS
-                  window.speechSynthesis.speak(silentUtterance);
-              }
-
-              // 成功解鎖後，立刻移除監聽器，避免重複執行
-              window.removeEventListener('click', unlockAudio);
-              window.removeEventListener('keydown', unlockAudio);
-              window.removeEventListener('touchend', unlockAudio);
-          } catch (e) {
-              console.warn("自動音效與 TTS 發音權限解鎖失敗:", e);
+    function unlockAudio() {
+      try {
+        if (!gameAudioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            gameAudioCtx = new AudioContextClass();
           }
+        }
+        if (gameAudioCtx && gameAudioCtx.state === 'suspended') {
+          gameAudioCtx.resume().then(() => {
+            window.removeEventListener('click', unlockAudio);
+            window.removeEventListener('keydown', unlockAudio);
+            window.removeEventListener('touchstart', unlockAudio);
+          });
+        }
+      } catch (e) {
+        console.warn("自動音效解鎖失敗:", e);
       }
+    }
 
     window.addEventListener('click', unlockAudio);
     window.addEventListener('keydown', unlockAudio);
-    window.addEventListener('touchend', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
 
     // --- 統一初始化與啟動程序 ---
     window.addEventListener("resize", resize);

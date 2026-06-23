@@ -2074,6 +2074,7 @@
 
     // --- GitHub Pages (HTTPS) 專用：瀏覽器自動播放限制全域解鎖器 ---
           // --- 瀏覽器自動播放限制全域解鎖器 (Web Audio API + TTS) ---
+            // --- 瀏覽器自動播放限制全域解鎖器 (Web Audio API + TTS) ---
       function unlockAudio() {
           try {
               // 1. 初始化並解鎖 Web Audio Context (音效)
@@ -2087,17 +2088,17 @@
                   gameAudioCtx.resume();
               }
               
-              // 2. 針對行動裝置 (特別是 iOS Safari) 的手勢限制，播放一個無聲 TTS 以解鎖未來的發音權限
+              // 2. 使用有效的觸發點 (click/touchend) 手勢，播放極微弱音量的單字，解鎖 TTS 語音權限
               if ('speechSynthesis' in window) {
-                  const silentUtterance = new SpeechSynthesisUtterance(' ');
-                  silentUtterance.volume = 0; // 靜音
+                  const silentUtterance = new SpeechSynthesisUtterance('ok');
+                  silentUtterance.volume = 0.01; // 極微弱音量，人耳聽不見，但能強迫瀏覽器啟動 TTS
                   window.speechSynthesis.speak(silentUtterance);
               }
 
-              // 成功解鎖一次後，立刻移除監聽器，避免後續重複執行造成效能耗損
+              // 成功解鎖後，立刻移除監聽器，避免重複執行
               window.removeEventListener('click', unlockAudio);
               window.removeEventListener('keydown', unlockAudio);
-              window.removeEventListener('touchstart', unlockAudio);
+              window.removeEventListener('touchend', unlockAudio);
           } catch (e) {
               console.warn("自動音效與 TTS 發音權限解鎖失敗:", e);
           }
@@ -2105,7 +2106,7 @@
 
     window.addEventListener('click', unlockAudio);
     window.addEventListener('keydown', unlockAudio);
-    window.addEventListener('touchstart', unlockAudio);
+    window.addEventListener('touchend', unlockAudio);
 
     // --- 統一初始化與啟動程序 ---
     window.addEventListener("resize", resize);

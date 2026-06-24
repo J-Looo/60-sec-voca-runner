@@ -269,13 +269,17 @@
     }
 
     /* 要求 3: 系統選單與右側累積表 */
+    /* 要求 3: 系統選單與右側累積表 */
     #system-menu-container {
       display: flex;
       gap: 20px;
-      align-items: center;
+      align-items: flex-start;
+      /* 👈 改為 flex-start 讓左右兩欄齊頭排列 */
       justify-content: center;
       width: 100%;
       flex-direction: row;
+      margin: auto;
+      /* 👈 新增：完美處理彈性置中與滾動邊界 */
     }
 
     .modal {
@@ -286,6 +290,15 @@
       border-radius: 32px;
       border: 1px solid #333;
       text-align: center;
+      box-sizing: border-box;
+    }
+
+    /* 🆕 新增：右欄包覆容器 */
+    #system-menu-right-column {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      width: 320px;
       box-sizing: border-box;
     }
 
@@ -305,14 +318,23 @@
     @media (max-width: 768px) {
       #system-menu-container {
         flex-direction: column;
-        max-height: 90vh;
-        overflow-y: auto;
+        align-items: center;
+        max-height: none;
+        /* 👈 取消高度限制，交由最外層 #system-menu 滾動 */
+        overflow-y: visible;
+        /* 👈 取消內部局部滾動 */
         gap: 15px;
+        margin: auto 0;
+      }
+
+      #system-menu-right-column {
+        width: 90% !important;
+        max-width: 350px;
       }
 
       .history-panel {
-        width: 90% !important;
-        max-width: 350px;
+        width: 100% !important;
+        /* 👈 繼承父容器寬度 */
         padding: 20px !important;
       }
     }
@@ -688,6 +710,14 @@
               font-family: monospace;
             " placeholder="apple 蘋果 n.&#10;wear out 用壞 v. ph."></textarea>
 
+        <!-- 挑戰選項：隱形牆壁 -->
+        <div style="margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <input type="checkbox" id="invisible-walls-checkbox" style="width: 18px; height: 18px; cursor: pointer;" />
+          <label for="invisible-walls-checkbox"
+            style="font-size: 14px; font-weight: bold; color: #ff4444; cursor: pointer; user-select: none;">
+            👻 隱形牆壁挑戰模式 (Invisible Walls Challenge)
+          </label>
+        </div>
         <button id="custom-start-btn" class="menu-btn selected" onclick="handleStartAfterReview()">
           確認單字無誤，開始遊戲
         </button>
@@ -782,11 +812,16 @@
           background: rgba(0, 0, 0, 0.7);
           backdrop-filter: blur(10px);
           z-index: 6000;
+          overflow-y: auto; /* 👈 新增：當小螢幕內容溢出時允許最外層滾動 */
+          box-sizing: border-box;
+          padding: 40px 10px; /* 👈 新增：滾動時保留上下邊緣的留白，避免貼齊邊緣 */
+          justify-content: flex-start; /* 👈 新增：改為 flex-start 搭配 margin: auto 防止小螢幕頂部被裁切 */
         ">
       <!-- 🔊 新增：暫停目錄靜音按鈕 -->
       <div id="mute-btn-system" class="mute-corner-btn" onclick="toggleMute(event)">🔊</div>
 
       <div id="system-menu-container">
+        <!-- 左欄: 選單按鈕 -->
         <div class="modal">
           <div style="
                 font-size: 12px;
@@ -808,18 +843,30 @@
             返回首頁 / HOME
           </button>
         </div>
-        <div class="history-panel" id="notebook-panel">
-          <h3
-            style="margin: 0 0 15px 0; font-size: 18px; color: var(--accent); border-bottom: 2px solid rgba(0, 210, 255, 0.2); padding-bottom: 8px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
-            📓 記事本線索
-          </h3>
-          <div id="notebook-list" class="history-list" style="max-height: 400px;">
-            尚未記錄任何線索
+
+        <!-- 右欄: 包含歷史紀錄與記事本 (兩者上下合併) -->
+        <div id="system-menu-right-column">
+          <!-- 歷史紀錄 -->
+          <div class="history-panel" style="width: 100%;">
+            <h3
+              style="margin: 0 0 15px 0; font-size: 18px; color: var(--accent); border-bottom: 2px solid rgba(0, 210, 255, 0.2); padding-bottom: 8px; font-weight: 800;">
+              📜 歷史紀錄 (已解開: <span id="word-count-menu">0</span>)
+            </h3>
+            <div id="history-list" class="history-list" style="max-height: 180px;">
+              尚未拼出單字
+            </div>
           </div>
-        </div>
-        <div class="history-panel">
-          <h3 style="...">歷史紀錄</h3>
-          <div id="history-list" class="history-list">...</div>
+
+          <!-- 記事本線索 -->
+          <div class="history-panel" id="notebook-panel" style="width: 100%;">
+            <h3
+              style="margin: 0 0 15px 0; font-size: 18px; color: var(--accent); border-bottom: 2px solid rgba(0, 210, 255, 0.2); padding-bottom: 8px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+              📓 記事本線索
+            </h3>
+            <div id="notebook-list" class="history-list" style="max-height: 180px;">
+              尚未記錄任何線索
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1194,6 +1241,7 @@
       dialogue: { active: false, textLine1: "", textLine2: "", timer: 0 },
       notebook: [],
       quickSpellTime: 0,
+      lockedSlots: [],
       speed: 5.5,
       letters: [],
       inventory: [],
@@ -1220,8 +1268,9 @@
       inAltarLastFrame: false, // 紀錄上一幀是否在祭壇內
       wasCollidingLastFrame: false, // 紀錄上一幀是否撞牆
       isWinAnimating: false, // 新增：勝利動畫播放中鎖定，防止重複觸發
-
+      invisibleWalls: false, // 👻 隱形牆壁挑戰模式啟用狀態
     };
+
 
     // 💡 內心話拼字提示 A-Z 輔助詞庫
     const FALLBACK_HINTS = {
@@ -1349,6 +1398,8 @@
       }
 
       if (e.code === "Space" && state.isSortingMode) {
+        // 🔒 貼入：如果該格子已經正確並鎖定，不允許玩家將其選中
+        if (state.lockedSlots && state.lockedSlots[state.kbSortIdx]) return;
         state.kbLockedIdx =
           state.kbLockedIdx === state.kbSortIdx ? null : state.kbSortIdx;
         updateUI();
@@ -1379,6 +1430,9 @@
           Math.min(state.inventory.length - 1, state.kbSortIdx + move),
         );
         if (state.kbLockedIdx !== null) {
+          // 🔒 貼入：若當前鍵盤選取格或要交換的目標格已被鎖定，則拒絕鍵盤交換
+          if (state.lockedSlots && (state.lockedSlots[state.kbSortIdx] || state.lockedSlots[nextIdx])) return;
+
           [state.inventory[state.kbSortIdx], state.inventory[nextIdx]] = [
             state.inventory[nextIdx],
             state.inventory[state.kbSortIdx],
@@ -1580,10 +1634,17 @@
       state.drillTime = 0;
       state.signalTime = 0;
       state.boostTime = 0;
-
+      state.worldX = 0; // 👈 補上這行：確保每次開局都重置角色 X 座標到地圖中央
+      state.worldY = 0; // 👈 補上這行：確保每次開局都重置角色 Y 座標到地圖中央
+      // 👈 貼入：對話與技能狀態初始化
       // 👈 貼入：對話與技能狀態初始化
       state.dialogue = { active: false, textLine1: "", textLine2: "", timer: 0 };
       state.quickSpellTime = 0;
+      state.lockedSlots = []; // 👈 先初始化為空陣列，等 chars 變數定義後再填滿
+
+      // 📓 每次關卡初始化或重置時，清空記事本線索並同步刷新 UI 介面
+      state.notebook = [];
+      updateNotebookUI();
 
       // 🎯 核心修改：HUD 題目顯示中文翻譯，隱藏英文答案
       const targetZH = WORD_DB[state.targetWord]?.zh || "自訂";
@@ -1817,6 +1878,7 @@
       });
 
       state.inventory = new Array(chars.length).fill("");
+      state.lockedSlots = new Array(chars.length).fill(false); // 👈 在 chars 被定義之後才初始化
 
       let padCount = 0;
       let padAttempts = 0;
@@ -1833,15 +1895,15 @@
         padAttempts++;
       }
 
-      // 🎲 8. 稀有技能點隨機生成與 HUD 提醒顯示 (機率調整為 40%)
+      // 🎲 8. 稀有技能點隨機生成與 HUD 提醒顯示 (機率 40% 且最多只會出現其中一個)
       let spawnedRare = false;
       if (Math.random() < 0.4) {
-        spawnItem("quickspell");
         spawnedRare = true;
-      }
-      if (Math.random() < 0.4) {
-        spawnItem("hint");
-        spawnedRare = true;
+        if (Math.random() < 0.5) {
+          spawnItem("quickspell");
+        } else {
+          spawnItem("hint");
+        }
       }
 
       const alertBox = document.getElementById("rare-skill-alert");
@@ -1896,6 +1958,9 @@
       slot.ondrop = () => {
         if (state.isWinAnimating) return; // 勝利動畫期間鎖定放置
         if (state.draggedIndex !== null && state.draggedIndex !== index) {
+          // 🔒 貼入：若目標格或被拖曳格已鎖定，則拒絕交換
+          if (state.lockedSlots && (state.lockedSlots[index] || state.lockedSlots[state.draggedIndex])) return;
+
           [state.inventory[state.draggedIndex], state.inventory[index]] = [
             state.inventory[index],
             state.inventory[state.draggedIndex],
@@ -1957,6 +2022,9 @@
           const targetIndex = slots.indexOf(lastTouchTarget);
 
           if (targetIndex !== -1 && targetIndex !== state.draggedIndex) {
+            // 🔒 貼入：若目標格或被拖曳格已鎖定，則拒絕觸控交換
+            if (state.lockedSlots && (state.lockedSlots[targetIndex] || state.lockedSlots[state.draggedIndex])) return;
+
             // 執行兩格位置交換
             [state.inventory[state.draggedIndex], state.inventory[targetIndex]] = [
               state.inventory[targetIndex],
@@ -1981,9 +2049,14 @@
       }
       state.inventory.forEach((char, i) => {
         const s = document.createElement("div");
-        s.className = `slot ${char ? "has-item" : ""} ${state.isSortingMode && state.kbSortIdx === i ? "kb-focus" : ""} ${state.isSortingMode && state.kbLockedIdx === i ? "kb-locked" : ""}`;
+        const isLocked = state.lockedSlots && state.lockedSlots[i]; // 檢測是否已被藍色技能鎖定
+
+        // 🎯 核心修改：如果是鎖定狀態，直接套用 win-highlight 樣式使其呈現黃色
+        s.className = `slot ${char ? "has-item" : ""} ${isLocked ? "win-highlight" : ""} ${state.isSortingMode && state.kbSortIdx === i ? "kb-focus" : ""} ${state.isSortingMode && state.kbLockedIdx === i ? "kb-locked" : ""}`;
         s.innerText = char || "";
-        if (char) initDragEvents(s, i);
+
+        // 🎯 核心修改：只有當格子「非鎖定狀態」時，才載入拖曳與點擊事件，否則直接鎖死
+        if (char && !isLocked) initDragEvents(s, i);
         inv.appendChild(s);
       });
     }
@@ -2163,24 +2236,30 @@
               return true; // 背包未齊，保留道具在地圖上不予吃掉
             }
           }
-          // 💡 吃到提示答案：即時將目前背包中有的字母進行正確排序
+          // 💡 吃到提示答案：即時將目前背包中有的字母進行正確排序，並將排好對的字母永久鎖定為黃色正確塊
           else if (it.type === "hint") {
             const targetChars = state.targetWord.replace(/\s+/g, "").split("");
             const collected = state.inventory.filter(c => c !== "");
             const newInventory = new Array(targetChars.length).fill("");
+
+            // 排序邏輯：將合適的字母放到正確位置，並將這些格子鎖定
             for (let i = 0; i < targetChars.length; i++) {
               const char = targetChars[i];
               const idx = collected.indexOf(char);
               if (idx !== -1) {
                 newInventory[i] = char;
                 collected.splice(idx, 1);
+                state.lockedSlots[i] = true; // 🔒 標記此位置已正確擺放並鎖定
               }
             }
+
+            // 處理其餘尚未拼上的字（以防萬一）
             for (let i = 0; i < newInventory.length; i++) {
               if (newInventory[i] === "" && collected.length > 0) {
                 newInventory[i] = collected.shift();
               }
             }
+
             state.inventory = newInventory;
             updateUI();
             playSFX('letter');
@@ -2282,6 +2361,12 @@
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       if (state.screen === "playing") {
+        ctx.save();
+        const zoom = 1.35; // 🔍 鏡頭放大倍率（大於 1 代表畫面放大、玩家可視範圍變小）
+        ctx.translate(cx, cy);
+        ctx.scale(zoom, zoom);
+        ctx.translate(-cx, -cy);
+
         ctx.strokeStyle = "#181818";
         for (let x = -state.worldX % 50; x < canvas.width; x += 50) {
           ctx.beginPath();
@@ -2313,7 +2398,10 @@
           120,
           120,
         );
+        // 1. 🧱 繪製地圖內的正常牆壁（如果開啟隱形牆壁挑戰則跳過）
         state.walls.forEach((w) => {
+          if (state.invisibleWalls) return; // 👻 隱形牆壁挑戰模式下不繪製
+
           if (w.unbreakable) {
             ctx.fillStyle = "#1e1e24";
             ctx.strokeStyle = "#3a3a45";
@@ -2328,15 +2416,55 @@
             cx + w.x - state.worldX,
             cy + w.y - state.worldY,
             w.w - 1,
-            w.h - 1,
+            w.h - 1
           );
           ctx.strokeRect(
             cx + w.x - state.worldX,
             cy + w.y - state.worldY,
             w.w - 1,
-            w.h - 1,
+            w.h - 1
           );
         });
+
+        // 2. 🧱 繪製地圖邊界外的牆壁（保持視覺一致，隱形模式下同樣不繪製）
+        if (!state.invisibleWalls) {
+          const MAP_SIZE = 720;
+          const TILE_SIZE = 40;
+          const GRID_COLS = 37;
+          const GRID_ROWS = 37;
+
+          const halfW = cx / zoom;
+          const halfH = cy / zoom;
+          const minGx = Math.floor((state.worldX - halfW - MAP_SIZE) / TILE_SIZE);
+          const maxGx = Math.ceil((state.worldX + halfW - MAP_SIZE) / TILE_SIZE);
+          const minGy = Math.floor((state.worldY - halfH - MAP_SIZE) / TILE_SIZE);
+          const maxGy = Math.ceil((state.worldY + halfH - MAP_SIZE) / TILE_SIZE);
+
+          ctx.fillStyle = "#1e1e24";
+          ctx.strokeStyle = "#3a3a45";
+          ctx.lineWidth = 2;
+
+          for (let gx = minGx - 1; gx <= maxGx + 1; gx++) {
+            for (let gy = minGy - 1; gy <= maxGy + 1; gy++) {
+              if (gx < 0 || gx >= GRID_COLS || gy < 0 || gy >= GRID_ROWS) {
+                const pixelX = gx * TILE_SIZE - MAP_SIZE;
+                const pixelY = gy * TILE_SIZE - MAP_SIZE;
+                ctx.fillRect(
+                  cx + pixelX - state.worldX,
+                  cy + pixelY - state.worldY,
+                  TILE_SIZE - 1,
+                  TILE_SIZE - 1
+                );
+                ctx.strokeRect(
+                  cx + pixelX - state.worldX,
+                  cy + pixelY - state.worldY,
+                  TILE_SIZE - 1,
+                  TILE_SIZE - 1
+                );
+              }
+            }
+          }
+        }
 
         // 🎨 繪製技能點（包含新增的快速拼字與提示答案）
         state.items.forEach((it) => {
@@ -2388,6 +2516,8 @@
         ctx.fillRect(cx - 15, cy - 15, 30, 30);
         ctx.strokeStyle = "#00d2ff";
         ctx.strokeRect(cx - 15, cy - 15, 30, 30);
+
+        ctx.restore(); // 👈 結束鏡頭縮放，讓後續的對話泡泡與過場遮罩使用原比例繪製，保持字體清晰與滿版
 
         // 🎬 1. 過場動畫陰影遮罩繪製
         if (state.transitionActive) {
@@ -2697,6 +2827,10 @@
       const manualInput = document.getElementById("custom-input").value.trim();
       if (!manualInput) return alert("單字清單不可以為空白");
 
+      // 👻 讀取隱形牆壁複選框的選取狀態
+      const invCheck = document.getElementById("invisible-walls-checkbox");
+      state.invisibleWalls = invCheck ? invCheck.checked : false;
+
       const lines = manualInput.split("\n").filter((l) => l.trim().length > 0);
       const newDB = {};
       lines.forEach((line) => {
@@ -2728,7 +2862,10 @@
 
     function selectMode(m) {
       playSFX('mode'); // 播放目錄頁專屬音效
-      if (m === 'preset') startGame();
+      if (m === 'preset') {
+        state.invisibleWalls = false; // 預設關卡強制關閉隱形牆壁
+        startGame();
+      }
     }
 
     function startGame() {
@@ -2738,6 +2875,10 @@
       state.timeLeft = 60;
       state.completedWords = [];
 
+      state.notebook = [];
+      state.quickSpellTime = 0;
+      state.lockedSlots = []; // 👈 重置鎖定陣列
+      updateNotebookUI();
       // 開始播放背景音樂，並設定適當音量
       if (bgm) {
         bgm.volume = 0.2;

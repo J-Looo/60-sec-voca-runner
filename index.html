@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SCAVENGER - 終極穩定修正版</title>
+  <title>VOCAB - 終極穩定修正版</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
   <style>
     :root {
@@ -153,12 +153,15 @@
       border: 2px solid rgba(255, 255, 255, 0.15);
       border-radius: 50%;
       pointer-events: none;
-      display: none; /* 平時隱藏 */
+      display: none;
+      /* 平時隱藏 */
       z-index: 1000;
-      transform: translate(-50%, -50%); /* 以中心點定位 */
+      transform: translate(-50%, -50%);
+      /* 以中心點定位 */
       backdrop-filter: blur(5px);
       box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     }
+
     #dynamic-stick {
       position: absolute;
       top: 50%;
@@ -392,6 +395,33 @@
       font-weight: 800;
     }
 
+    /* ⏰ 15秒警報狀態下的紅字與左右晃動特效 */
+    #timer-box.warning-active {
+      color: #ff4444 !important;
+      border-color: #ff4444 !important;
+      animation: timer-shake 0.15s infinite;
+      text-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+      box-shadow: 0 0 20px rgba(255, 68, 68, 0.3), inset 0 0 10px rgba(255, 68, 68, 0.2);
+    }
+
+    @keyframes timer-shake {
+
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      25% {
+        transform: translateX(-2px);
+      }
+
+      75% {
+        transform: translateX(2px);
+      }
+    }
+
+
+
     .time-plus-pop {
       position: absolute;
       right: -70px;
@@ -413,8 +443,10 @@
     }
 
     .status-bar {
-      width: 180px;
-      padding: 10px;
+      width: 110px;
+      /* 👈 從 180px 縮短為 130px */
+      padding: 8px;
+      /* 👈 稍微縮小內邊距，留出更多內部空間給文字 */
       background: rgba(0, 0, 0, 0.8);
       border-radius: 10px;
       border: 1px solid #444;
@@ -464,16 +496,112 @@
         opacity: 0;
       }
     }
+
+    /* 靜音按鈕樣式 */
+    .mute-corner-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      width: 45px;
+      height: 45px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 20px;
+      cursor: pointer;
+      pointer-events: auto;
+      transition: all 0.2s ease;
+      z-index: 7000;
+      backdrop-filter: blur(5px);
+    }
+
+    .mute-corner-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(1.05);
+    }
+
+
+    /* 🪄 快速拼字狀態條顯示 */
+    #quickspell-bar.status-bar {
+      width: 110px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.8);
+      border-radius: 10px;
+      border: 1px solid #444;
+      display: none;
+    }
+
+    /* 💡 稀有技能提醒視窗（加入漸變淡出與輕微閃爍） */
+    #rare-skill-alert {
+      position: absolute;
+      bottom: min(15vw, 120px);
+      left: 20px;
+      background: rgba(255, 0, 255, 0.12);
+      border: 1px solid rgba(255, 0, 255, 0.4);
+      box-shadow: 0 0 15px rgba(255, 0, 255, 0.2);
+      color: #ffccff;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 10px 18px;
+      border-radius: 12px;
+      z-index: 1000;
+      pointer-events: none;
+      display: none;
+      backdrop-filter: blur(5px);
+
+      /* 👈 貼入：支援 0.5 秒平滑淡出漸變 */
+      transition: opacity 0.5s ease;
+      opacity: 1;
+
+      /* 👈 輕微閃爍動畫，時長縮短為 1.2 秒讓閃爍感更清晰 */
+      animation: alert-pulse 1.2s infinite ease-in-out;
+    }
+
+    @keyframes alert-pulse {
+
+      0%,
+      100% {
+        opacity: 0.7;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.02);
+      }
+    }
+
+    @keyframes alert-pulse {
+
+      0%,
+      100% {
+        opacity: 0.8;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.03);
+        box-shadow: 0 0 25px rgba(255, 0, 255, 0.4);
+      }
+    }
   </style>
 </head>
 
 <body>
   <div id="game-container">
+
+    <!-- 放在 body 內 -->
+    <audio id="bgm" src="audio/bgm.mp3" loop></audio>
+
     <canvas id="gameCanvas"></canvas>
 
     <!-- 1. 首頁 -->
     <div id="home-screen" class="screen active" onmousedown="handleStartTrigger(event)">
-      <div class="game-title">SCAVENGER</div>
+      <div class="game-title">VOCAB</div>
       <div class="press-hint">PRESS ANY KEY OR CLICK TO START</div>
       <!-- 要求 6: 退出按鈕 -->
       <div class="btn-quit" onclick="
@@ -486,6 +614,9 @@
 
     <!-- 2. 模式選擇 -->
     <div id="mode-screen" class="screen">
+      <!-- 🔊 新增：選單列表靜音按鈕 -->
+      <div id="mute-btn-mode" class="mute-corner-btn" onclick="toggleMute(event)">🔊</div>
+
       <h1 style="margin-bottom: 40px; font-size: 32px">挑戰模式</h1>
       <div class="mode-container">
         <div id="mode-0" class="mode-option selected" onclick="selectMode('preset')">
@@ -568,6 +699,7 @@
 
     <!-- 4. 遊戲 HUD -->
     <div id="game-hud">
+      <div id="rare-skill-alert">本回合有「快速拼字」或是「提示答案」，趕快找出來吧！</div>
       <!-- 動態隨選搖桿 -->
       <div id="dynamic-joystick">
         <div id="dynamic-stick"></div>
@@ -586,7 +718,7 @@
             ">
           <div>尋找單字: <span id="current-target" style="font-weight: 800">---</span></div>
           <div style="opacity: 0.3">|</div>
-          <div style="color: #00ff88;">已解鎖: <span id="word-count-hud" style="font-weight: 800;">0</span></div>
+          <div style="color: #00ff88;">已累積單字: <span id="word-count-hud" style="font-weight: 800;">0</span></div>
         </div>
         <div id="timer-wrapper">
           <div id="timer-box"><span id="time-val">60</span>s</div>
@@ -613,6 +745,13 @@
       </div>
 
       <div id="status-column">
+        <!-- 👈 貼在 status-column 內部最上方：快速拼字計時條 -->
+        <div id="quickspell-bar" class="status-bar">
+          <span style="color: #ff00ff; font-size: 11px; font-weight: 800">🪄 快速拼字啟動</span>
+          <div class="bar-container">
+            <div class="bar-fill" id="quickspell-fill" style="background: #ff00ff"></div>
+          </div>
+        </div>
         <div id="drill-bar" class="status-bar">
           <span style="color: #ffcc00; font-size: 11px; font-weight: 800">⚒️ 鑽頭功能啟動</span>
           <div class="bar-container">
@@ -644,6 +783,9 @@
           backdrop-filter: blur(10px);
           z-index: 6000;
         ">
+      <!-- 🔊 新增：暫停目錄靜音按鈕 -->
+      <div id="mute-btn-system" class="mute-corner-btn" onclick="toggleMute(event)">🔊</div>
+
       <div id="system-menu-container">
         <div class="modal">
           <div style="
@@ -666,20 +808,18 @@
             返回首頁 / HOME
           </button>
         </div>
-        <div class="history-panel">
-          <div style="
-                font-size: 11px;
-                color: #555;
-                font-weight: 800;
-                margin-bottom: 15px;
-                letter-spacing: 1px;
-                display: flex;
-                justify-content: space-between;
-              ">
-            <span>已解鎖資料 HISTORY</span>
-            <span style="color: var(--accent);">共 <span id="word-count-menu">0</span> 個</span>
+        <div class="history-panel" id="notebook-panel">
+          <h3
+            style="margin: 0 0 15px 0; font-size: 18px; color: var(--accent); border-bottom: 2px solid rgba(0, 210, 255, 0.2); padding-bottom: 8px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+            📓 記事本線索
+          </h3>
+          <div id="notebook-list" class="history-list" style="max-height: 400px;">
+            尚未記錄任何線索
           </div>
-          <div id="history-list" class="history-list">尚未拼出單字</div>
+        </div>
+        <div class="history-panel">
+          <h3 style="...">歷史紀錄</h3>
+          <div id="history-list" class="history-list">...</div>
         </div>
       </div>
     </div>
@@ -701,6 +841,7 @@
 
   <script>
     const canvas = document.getElementById("gameCanvas");
+    const bgm = document.getElementById("bgm"); // 獲取背景音樂元件
 
     // --- 網頁音效合成器 (Web Audio API) ---
     // --- 網頁音效合成器防連發冷卻紀錄 ---
@@ -709,6 +850,8 @@
 
     // --- 網頁音效合成器 (Web Audio API) ---
     function playSFX(type) {
+      // 🔊 新增：若靜音狀態為 true 則不播放任何音效
+      if (typeof state !== 'undefined' && state.isMuted) return;
       try {
         // 若全域 context 尚未初始化，則進行初始化
         if (!gameAudioCtx) {
@@ -882,34 +1025,30 @@
           osc.stop(ctx.currentTime + 0.35);
         }
         else if (type === 'warning') {
-          // 明朗亮麗的雙音節電子提示鈴聲 (約 0.6 秒)
-          const osc1 = ctx.createOscillator();
-          const osc2 = ctx.createOscillator();
-          const gain1 = ctx.createGain();
-          const gain2 = ctx.createGain();
+          // 📡 雙發科幻雷射槍音效 (Double-shot Sci-fi Laser: Pew Pew!)
+          const playPew = (startTime) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
 
-          osc1.type = 'sine';
-          osc1.frequency.setValueAtTime(987.77, ctx.currentTime);
-          gain1.gain.setValueAtTime(0, ctx.currentTime);
-          gain1.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.04);
-          gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+            // 鋸齒波，產生科技感的雷射穿透音色
+            osc.type = 'sawtooth';
+            // 音高從高頻 1300Hz 急遽墜落至 80Hz (雷射槍的頻率特徵)
+            osc.frequency.setValueAtTime(1300, startTime);
+            osc.frequency.exponentialRampToValueAtTime(80, startTime + 0.12);
 
-          osc2.type = 'sine';
-          osc2.frequency.setValueAtTime(1318.51, ctx.currentTime + 0.08);
-          gain2.gain.setValueAtTime(0, ctx.currentTime);
-          gain2.gain.setValueAtTime(0, ctx.currentTime + 0.08);
-          gain2.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.12);
-          gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+            // 音量快速衰減
+            gain.gain.setValueAtTime(0.3, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.12);
 
-          osc1.connect(gain1);
-          gain1.connect(ctx.destination);
-          osc2.connect(gain2);
-          gain2.connect(ctx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + 0.12);
+          };
 
-          osc1.start();
-          osc2.start();
-          osc1.stop(ctx.currentTime + 0.6);
-          osc2.stop(ctx.currentTime + 0.6);
+          // 兩發連續雷射槍聲，間隔 0.15 秒 (Pew Pew!)
+          playPew(ctx.currentTime);
+          playPew(ctx.currentTime + 0.15);
         }
         else if (type === 'success') {
           // 成功拼對單字：亮麗上升大調和弦音 (約 0.8 秒)
@@ -1049,10 +1188,19 @@
       screen: "home",
       worldX: 0,
       worldY: 0,
+      transitionActive: false,
+      transitionTime: 0,
+      transitionTriggered: false,
+      dialogue: { active: false, textLine1: "", textLine2: "", timer: 0 },
+      notebook: [],
+      quickSpellTime: 0,
       speed: 5.5,
       letters: [],
       inventory: [],
       completedWords: [],
+      availableWords: [],  // 儲存當前輪次未出現的單字池
+      practiceCounts: {},  // 紀錄每個單字被成功練習/拼出的次數
+      isMuted: localStorage.getItem("vocab_muted") === "true", // 👈 🔊 新增：靜音狀態快取
       targetWord: "",
       timeLeft: 60,
       keys: {},
@@ -1072,7 +1220,26 @@
       inAltarLastFrame: false, // 紀錄上一幀是否在祭壇內
       wasCollidingLastFrame: false, // 紀錄上一幀是否撞牆
       isWinAnimating: false, // 新增：勝利動畫播放中鎖定，防止重複觸發
+
     };
+
+    // 💡 內心話拼字提示 A-Z 輔助詞庫
+    const FALLBACK_HINTS = {
+      A: ["APE", "ACT", "AREA", "ATOM"], B: ["BAT", "BOX", "BODY", "BLUE"],
+      C: ["CAT", "COW", "CITY", "COLD"], D: ["DOG", "DOOR", "DATE", "DARK"],
+      E: ["EAR", "EAST", "EDGE", "ECHO"], F: ["FOX", "FISH", "FIRE", "FREE"],
+      G: ["GAS", "GATE", "GIFT", "GOLD"], H: ["HAT", "HOME", "HAIR", "HOPE"],
+      I: ["ICE", "IDEA", "IRON", "INFO"], J: ["JAR", "JOB", "JOIN", "JUMP"],
+      K: ["KEY", "KING", "KEEP", "KICK"], L: ["LION", "LAKE", "LINE", "LOVE"],
+      M: ["MAP", "MOON", "MIND", "MANY"], N: ["NET", "NAME", "NOTE", "NEWS"],
+      O: ["OWL", "OPEN", "ONCE", "ONLY"], P: ["PIG", "PARK", "PLAN", "PURE"],
+      Q: ["QUIZ", "QUIT", "QUAD", "QUICK"], R: ["RAT", "ROAD", "RAIN", "RICE"],
+      S: ["SUN", "STAR", "SHIP", "SNOW"], T: ["TOY", "TOWN", "TREE", "TIME"],
+      U: ["UNIT", "USER", "UPON", "UGLY"], V: ["VASE", "VIEW", "VOTE", "VERY"],
+      W: ["WIND", "WALL", "WORD", "WEST"], X: ["XRAY", "XEROX"],
+      Y: ["YAK", "YEAR", "YOGA", "YOUR"], Z: ["ZOO", "ZERO", "ZONE", "ZEST"]
+    };
+
 
     const SAFE_ZONE = 160;
     const KEY_MAP = {
@@ -1091,6 +1258,15 @@
       if (e && e.target && e.target.classList.contains('btn-quit')) return;
       if (state.screen === 'home') {
         playSFX('home'); // 播放首頁專屬音效
+
+        // 點擊標題畫面進入選單的瞬間，立刻開始播放背景音樂並設定音量
+        // 點擊標題畫面進入選單的瞬間，立刻開始播放背景音樂並設定音量
+        if (bgm) {
+          bgm.volume = 0.2; // 20% 音量
+          bgm.muted = state.isMuted; // 👈 🔊 新增：同步靜音狀態
+          bgm.play().catch(e => console.warn("等待手勢解鎖以播放 BGM:", e));
+        }
+
         changeScreen('mode-screen');
       }
     }
@@ -1217,19 +1393,16 @@
     }
 
     // --- 隨選動態追隨搖桿 (Dynamic Floating Joystick) ---
+    // 支援行動裝置觸控與電腦滑鼠點擊拖曳
     let touchActive = false;
+    let mouseActive = false;
     let startX = 0;
     let startY = 0;
     let joyEl = null;
     let stickEl = null;
 
-    function handleTouchMove(e) {
-      if (!touchActive || state.screen !== "playing" || state.isPaused || state.isWinAnimating || state.isSortingMode) return;
-      
-      const touch = e.touches[0];
-      const curX = touch.clientX;
-      const curY = touch.clientY;
-      
+    // 統一計算與更新搖桿位置的核心邏輯
+    function updateJoystickPosition(curX, curY) {
       const dx = curX - startX;
       const dy = curY - startY;
       const dist = Math.hypot(dx, dy);
@@ -1240,23 +1413,23 @@
       if (!joyEl) joyEl = document.getElementById("dynamic-joystick");
       if (!stickEl) stickEl = document.getElementById("dynamic-stick");
 
-      // 若拉動距離超過 50px 限制，搖桿基座開始跟隨手指滑動 (Following Joystick)
+      // 若拉動距離超過 50px 限制，搖桿基座開始跟隨手指/滑標滑動 (Following Joystick)
       if (dist > 50) {
         const ux = dx / dist;
         const uy = dy / dist;
-        
-        // 更新搖桿基座中心，使其與手指保持 50px 距離
+
+        // 更新搖桿基座中心，使其與手指/游標保持 50px 距離
         startX = curX - ux * 50;
         startY = curY - uy * 50;
-        
+
         // 重新定位基座 DOM 元素
         joyEl.style.left = `${startX}px`;
         joyEl.style.top = `${startY}px`;
-        
+
         // 搖桿頭固定拉到最大邊界
         stickX = ux * 50;
         stickY = uy * 50;
-        
+
         state.joystick.vx = ux;
         state.joystick.vy = uy;
       } else {
@@ -1268,9 +1441,16 @@
       stickEl.style.transform = `translate(calc(-50% + ${stickX}px), calc(-50% + ${stickY}px))`;
     }
 
+    // --- 1. 手機/平板觸控事件監聽 ---
+    function handleTouchMove(e) {
+      if (!touchActive || state.screen !== "playing" || state.isPaused || state.isWinAnimating || state.isSortingMode) return;
+      const touch = e.touches[0];
+      updateJoystickPosition(touch.clientX, touch.clientY);
+    }
+
     window.addEventListener("touchstart", (e) => {
       if (state.screen !== "playing" || state.isPaused || state.isWinAnimating || state.isSortingMode) return;
-      
+
       // 防禦機制：點擊在 HUD 介面（如下方背包、右上選單、暫停視窗）上時，不觸發搖桿
       let target = e.target;
       while (target) {
@@ -1287,11 +1467,9 @@
       if (!joyEl) joyEl = document.getElementById("dynamic-joystick");
       if (!stickEl) stickEl = document.getElementById("dynamic-stick");
 
-      // 在觸控起點顯示動態搖桿
       joyEl.style.left = `${startX}px`;
       joyEl.style.top = `${startY}px`;
       joyEl.style.display = "block";
-      
       stickEl.style.transform = "translate(-50%, -50%)"; // 重置搖桿頭置中
 
       touchActive = true;
@@ -1299,7 +1477,6 @@
 
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
 
-    // 當手指放開或觸控中斷時，隱藏搖桿並停止角色移動
     const stopTouchMove = () => {
       if (touchActive) {
         touchActive = false;
@@ -1312,7 +1489,54 @@
     window.addEventListener("touchend", stopTouchMove);
     window.addEventListener("touchcancel", stopTouchMove);
 
-    // --- 核心遊戲與 要求 2: 即時判定 ---
+    // --- 2. 電腦滑鼠事件監聽 ---
+    function handleMouseMove(e) {
+      if (!mouseActive || state.screen !== "playing" || state.isPaused || state.isWinAnimating || state.isSortingMode) return;
+      updateJoystickPosition(e.clientX, e.clientY);
+    }
+
+    window.addEventListener("mousedown", (e) => {
+      // 僅限滑鼠左鍵點擊
+      if (e.button !== 0) return;
+      if (state.screen !== "playing" || state.isPaused || state.isWinAnimating || state.isSortingMode) return;
+
+      // 防禦機制：點擊在 HUD 介面（如下方背包、右上選單、暫停視窗）上時，不觸發滑鼠搖桿
+      let target = e.target;
+      while (target) {
+        if (target.id === "inventory-hud" || target.id === "menu-icon" || target.classList.contains("modal") || target.classList.contains("history-panel")) {
+          return;
+        }
+        target = target.parentElement;
+      }
+
+      startX = e.clientX;
+      startY = e.clientY;
+
+      if (!joyEl) joyEl = document.getElementById("dynamic-joystick");
+      if (!stickEl) stickEl = document.getElementById("dynamic-stick");
+
+      joyEl.style.left = `${startX}px`;
+      joyEl.style.top = `${startY}px`;
+      joyEl.style.display = "block";
+      stickEl.style.transform = "translate(-50%, -50%)"; // 重置搖桿頭置中
+
+      mouseActive = true;
+    });
+
+    window.addEventListener("mousemove", handleMouseMove);
+
+    const stopMouseMove = () => {
+      if (mouseActive) {
+        mouseActive = false;
+        if (!joyEl) joyEl = document.getElementById("dynamic-joystick");
+        joyEl.style.display = "none"; // 隱藏搖桿
+        state.joystick.vx = 0;
+        state.joystick.vy = 0;
+      }
+    };
+    window.addEventListener("mouseup", stopMouseMove);
+    window.addEventListener("mouseleave", stopMouseMove); // 防止滑鼠拖曳到視窗外面時卡住
+
     function spawnItem(type) {
       if (state.items.some((it) => it.type === type)) return;
       let x,
@@ -1324,6 +1548,13 @@
         x = state.worldX + Math.cos(ang) * dist;
         y = state.worldY + Math.sin(ang) * dist;
         safe = true;
+
+        // 🔒 邊界防禦：確保技能點（鑽頭/雷達）生成在玩家可達的 [-600, 600] 像素範圍內
+        if (Math.abs(x) > 600 || Math.abs(y) > 600) {
+          safe = false;
+          continue; // 座標超出邊界，重新生成一次
+        }
+
         for (let w of state.walls)
           if (x > w.x - 20 && x < w.x + 60 && y > w.y - 20 && y < w.y + 60)
             safe = false;
@@ -1332,9 +1563,15 @@
       state.items.push({ x, y, type });
     }
 
-    function initLevel() {
-      state.targetWord =
-        WORD_POOL[Math.floor(Math.random() * WORD_POOL.length)];
+    function initLevel(keepWord = false) {
+      if (!keepWord) {
+        if (!state.availableWords || state.availableWords.length === 0) {
+          state.availableWords = [...WORD_POOL];
+        }
+        const idx = Math.floor(Math.random() * state.availableWords.length);
+        state.targetWord = state.availableWords.splice(idx, 1)[0];
+      }
+
       state.inventory = [];
       state.letters = [];
       state.walls = [];
@@ -1343,7 +1580,14 @@
       state.drillTime = 0;
       state.signalTime = 0;
       state.boostTime = 0;
-      document.getElementById("current-target").innerText = state.targetWord;
+
+      // 👈 貼入：對話與技能狀態初始化
+      state.dialogue = { active: false, textLine1: "", textLine2: "", timer: 0 };
+      state.quickSpellTime = 0;
+
+      // 🎯 核心修改：HUD 題目顯示中文翻譯，隱藏英文答案
+      const targetZH = WORD_DB[state.targetWord]?.zh || "自訂";
+      document.getElementById("current-target").innerText = targetZH;
 
       // 更新 HUD 的累積單字數量顯示
       const hudCount = document.getElementById("word-count-hud");
@@ -1351,27 +1595,282 @@
         hudCount.innerText = state.completedWords.length;
       }
 
-      const chars = state.targetWord.replace(/\s+/g, "").split("");
-      chars.forEach((char) => {
-        let rx, ry;
+      // 地圖參數
+      const MAP_SIZE = 720;
+      const TILE_SIZE = 40;
+      const GRID_COLS = 37;
+      const GRID_ROWS = 37;
+      const CENTER = 18;
+
+      const grid = [];
+      for (let x = 0; x < GRID_COLS; x++) {
+        grid[x] = [];
+        for (let y = 0; y < GRID_ROWS; y++) {
+          grid[x][y] = 1;
+        }
+      }
+
+      for (let i = 0; i < GRID_COLS; i++) {
+        grid[i][0] = 2;
+        grid[i][GRID_ROWS - 1] = 2;
+        grid[0][i] = 2;
+        grid[GRID_COLS - 1][i] = 2;
+      }
+
+      for (let x = CENTER - 3; x <= CENTER + 3; x++) {
+        for (let y = CENTER - 3; y <= CENTER + 3; y++) {
+          if (grid[x][y] !== 2) {
+            grid[x][y] = 0;
+          }
+        }
+      }
+
+      const rooms = [];
+      const numRooms = 6 + Math.floor(Math.random() * 3);
+      for (let r = 0; r < numRooms; r++) {
+        const rw = 3 + Math.floor(Math.random() * 3);
+        const rh = 3 + Math.floor(Math.random() * 3);
+        let rx, ry, overlapsAltar;
+        let attempts = 0;
         do {
-          rx = (Math.random() - 0.5) * 1400;
-          ry = (Math.random() - 0.5) * 1400;
-        } while (Math.hypot(rx, ry) < 160);
+          rx = 2 + Math.floor(Math.random() * (GRID_COLS - rw - 4));
+          ry = 2 + Math.floor(Math.random() * (GRID_ROWS - rh - 4));
+
+          overlapsAltar = false;
+          for (let x = rx - 1; x < rx + rw + 1; x++) {
+            for (let y = ry - 1; y < ry + rh + 1; y++) {
+              if (x >= CENTER - 4 && x <= CENTER + 4 && y >= CENTER - 4 && y <= CENTER + 4) {
+                overlapsAltar = true;
+              }
+            }
+          }
+          attempts++;
+        } while (overlapsAltar && attempts < 100);
+
+        for (let x = rx; x < rx + rw; x++) {
+          for (let y = ry; y < ry + rh; y++) {
+            if (grid[x][y] !== 2) {
+              grid[x][y] = 0;
+            }
+          }
+        }
+        rooms.push({
+          x: rx, y: ry, w: rw, h: rh,
+          cx: rx + Math.floor(rw / 2),
+          cy: ry + Math.floor(rh / 2)
+        });
+      }
+
+      const visited = [];
+      for (let x = 0; x < GRID_COLS; x++) {
+        visited[x] = [];
+        for (let y = 0; y < GRID_ROWS; y++) {
+          visited[x][y] = false;
+        }
+      }
+
+      for (let x = CENTER - 3; x <= CENTER + 3; x++) {
+        for (let y = CENTER - 3; y <= CENTER + 3; y++) {
+          visited[x][y] = true;
+        }
+      }
+
+      function carveMaze(gx, gy) {
+        visited[gx][gy] = true;
+        const dirs = [[0, -2], [0, 2], [-2, 0], [2, 0]];
+        dirs.sort(() => Math.random() - 0.5);
+
+        for (let [dx, dy] of dirs) {
+          const nx = gx + dx;
+          const ny = gy + dy;
+
+          if (nx >= 2 && nx < GRID_COLS - 2 && ny >= 2 && ny < GRID_ROWS - 2) {
+            if (!visited[nx][ny]) {
+              grid[nx][ny] = 0;
+              grid[gx + dx / 2][gy + dy / 2] = 0;
+              carveMaze(nx, ny);
+            }
+          }
+        }
+      }
+
+      carveMaze(CENTER - 3, CENTER);
+      carveMaze(CENTER + 3, CENTER);
+      carveMaze(CENTER, CENTER - 3);
+      carveMaze(CENTER, CENTER + 3);
+
+      for (let x = 1; x < GRID_COLS - 1; x++) {
+        for (let y = 1; y < GRID_ROWS - 1; y++) {
+          if (grid[x][y] === 1) {
+            let openNeighbors = 0;
+            if (grid[x - 1][y] === 0) openNeighbors++;
+            if (grid[x + 1][y] === 0) openNeighbors++;
+            if (grid[x][y - 1] === 0) openNeighbors++;
+            if (grid[x][y + 1] === 0) openNeighbors++;
+
+            if (openNeighbors >= 2 && Math.random() < 0.15) {
+              grid[x][y] = 0;
+            }
+          }
+        }
+      }
+
+      for (let gx = 0; gx < GRID_COLS; gx++) {
+        for (let gy = 0; gy < GRID_ROWS; gy++) {
+          const pixelX = gx * TILE_SIZE - MAP_SIZE;
+          const pixelY = gy * TILE_SIZE - MAP_SIZE;
+          if (grid[gx][gy] === 1) {
+            state.walls.push({ x: pixelX, y: pixelY, w: TILE_SIZE, h: TILE_SIZE, unbreakable: false });
+          } else if (grid[gx][gy] === 2) {
+            state.walls.push({ x: pixelX, y: pixelY, w: TILE_SIZE, h: TILE_SIZE, unbreakable: true });
+          }
+        }
+      }
+
+      // 🔠 6. 散落字母與防護罩生成
+      const chars = state.targetWord.replace(/\s+/g, "").split("");
+      const encasedIndices = [];
+      const numEncased = Math.min(chars.length, 1 + Math.floor(Math.random() * 2));
+      while (encasedIndices.length < numEncased) {
+        const randIdx = Math.floor(Math.random() * chars.length);
+        if (!encasedIndices.includes(randIdx)) {
+          encasedIndices.push(randIdx);
+        }
+      }
+
+      chars.forEach((char, index) => {
+        const targetRoom = rooms[index % rooms.length];
+        let rx = 0, ry = 0;
+        let found = false;
+        let attempts = 0;
+        let chosenGx = 0, chosenGy = 0;
+
+        while (!found && attempts < 50) {
+          const gx = targetRoom.x + Math.floor(Math.random() * targetRoom.w);
+          const gy = targetRoom.y + Math.floor(Math.random() * targetRoom.h);
+          if (grid[gx][gy] === 0) {
+            chosenGx = gx;
+            chosenGy = gy;
+            rx = gx * TILE_SIZE - MAP_SIZE + TILE_SIZE / 2;
+            ry = gy * TILE_SIZE - MAP_SIZE + TILE_SIZE / 2;
+            found = true;
+          }
+          attempts++;
+        }
+
+        if (!found) {
+          chosenGx = targetRoom.cx;
+          chosenGy = targetRoom.cy;
+          rx = chosenGx * TILE_SIZE - MAP_SIZE + TILE_SIZE / 2;
+          ry = chosenGy * TILE_SIZE - MAP_SIZE + TILE_SIZE / 2;
+        }
+
+        grid[chosenGx][chosenGy] = 3; // 標記為字母格
         state.letters.push({ x: rx, y: ry, char });
-        for (let i = 0; i < 3; i++) {
-          let wx = rx + (Math.floor(Math.random() * 3) - 1) * 40,
-            wy = ry + (Math.floor(Math.random() * 3) - 1) * 40;
-          if (Math.hypot(wx, wy) > 160)
-            state.walls.push({ x: wx, y: wy, w: 40, h: 40 });
+
+        const isEncased = encasedIndices.includes(index);
+
+        if (isEncased) {
+          const offsets = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+          offsets.forEach(([ox, oy]) => {
+            const wgx = chosenGx + ox;
+            const wgy = chosenGy + oy;
+            const wx = wgx * TILE_SIZE - MAP_SIZE;
+            const wy = wgy * TILE_SIZE - MAP_SIZE;
+
+            if (
+              wgx >= 1 && wgx < GRID_COLS - 1 &&
+              wgy >= 1 && wgy < GRID_ROWS - 1 &&
+              grid[wgx][wgy] === 0 &&
+              Math.hypot(wx, wy) > 160
+            ) {
+              grid[wgx][wgy] = 1;
+              state.walls.push({
+                x: wx, y: wy, w: TILE_SIZE, h: TILE_SIZE, unbreakable: false
+              });
+            }
+          });
+        } else {
+          for (let i = 0; i < 2; i++) {
+            let wx = rx + (Math.floor(Math.random() * 3) - 1) * TILE_SIZE;
+            let wy = ry + (Math.floor(Math.random() * 3) - 1) * TILE_SIZE;
+            const wgx = Math.round((wx + MAP_SIZE) / TILE_SIZE);
+            const wgy = Math.round((wy + MAP_SIZE) / TILE_SIZE);
+
+            if (
+              wgx >= 1 && wgx < GRID_COLS - 1 &&
+              wgy >= 1 && wgy < GRID_ROWS - 1 &&
+              grid[wgx][wgy] === 0 &&
+              Math.hypot(wx, wy) > 160
+            ) {
+              grid[wgx][wgy] = 1;
+              state.walls.push({
+                x: wgx * TILE_SIZE - MAP_SIZE,
+                y: wgy * TILE_SIZE - MAP_SIZE,
+                w: TILE_SIZE,
+                h: TILE_SIZE,
+                unbreakable: false
+              });
+            }
+          }
         }
       });
+
       state.inventory = new Array(chars.length).fill("");
-      for (let i = 0; i < 5; i++)
-        state.speedPads.push({
-          x: (Math.random() - 0.5) * 1200,
-          y: (Math.random() - 0.5) * 1200,
-        });
+
+      let padCount = 0;
+      let padAttempts = 0;
+      while (padCount < 6 && padAttempts < 200) {
+        const gx = 2 + Math.floor(Math.random() * (GRID_COLS - 4));
+        const gy = 2 + Math.floor(Math.random() * (GRID_ROWS - 4));
+        if (grid[gx][gy] === 0 && Math.hypot(gx - CENTER, gy - CENTER) > 4) {
+          state.speedPads.push({
+            x: gx * TILE_SIZE - MAP_SIZE + TILE_SIZE / 2,
+            y: gy * TILE_SIZE - MAP_SIZE + TILE_SIZE / 2
+          });
+          padCount++;
+        }
+        padAttempts++;
+      }
+
+      // 🎲 8. 稀有技能點隨機生成與 HUD 提醒顯示 (機率調整為 40%)
+      let spawnedRare = false;
+      if (Math.random() < 0.4) {
+        spawnItem("quickspell");
+        spawnedRare = true;
+      }
+      if (Math.random() < 0.4) {
+        spawnItem("hint");
+        spawnedRare = true;
+      }
+
+      const alertBox = document.getElementById("rare-skill-alert");
+      if (alertBox) {
+        if (spawnedRare) {
+          // 清除上一次可能殘留的定時器
+          if (state.rareSkillAlertTimeout) {
+            clearTimeout(state.rareSkillAlertTimeout);
+          }
+
+          alertBox.style.display = "block";
+          alertBox.style.opacity = "1"; // 顯示並設為不透明
+
+          // ⏰ 3 秒後開始漸變淡出，並在淡出完成後隱藏 display
+          state.rareSkillAlertTimeout = setTimeout(() => {
+            alertBox.style.opacity = "0"; // 觸發 CSS opacity 漸變淡出
+            setTimeout(() => {
+              // 雙重防禦：確保期間沒有重置關卡導致狀態改變
+              if (alertBox.style.opacity === "0") {
+                alertBox.style.display = "none";
+              }
+            }, 500); // 0.5 秒漸變結束後隱藏
+          }, 3000);
+        } else {
+          alertBox.style.display = "none";
+          alertBox.style.opacity = "0";
+        }
+      }
+
       spawnItem("drill");
       spawnItem("signal");
       updateUI();
@@ -1490,9 +1989,44 @@
     }
 
     function update(dt) {
-      // 若正在播放勝利動畫，則完全停止角色位移與物理更新，原地定格
-      if (state.screen !== "playing" || state.isPaused || state.isWinAnimating) return;
+      // 🎬 1. 更新過場動畫計時 (只要過場啟動就前進，不受遊戲暫停影響)
+      if (state.transitionActive) {
+        state.transitionTime += dt;
+        if (state.transitionTime >= 400 && !state.transitionTriggered) {
+          state.transitionTriggered = true;
+          initLevel(true); // 帶入 true 參數以保留原單字
+        }
+        if (state.transitionTime >= 1200) {
+          state.transitionActive = false; // 結束
+        }
+      }
 
+      // 💬 2. 更新對話泡泡計時
+      if (state.dialogue && state.dialogue.active) {
+        state.dialogue.timer -= dt;
+        if (state.dialogue.timer <= 0) {
+          state.dialogue.active = false;
+        }
+      }
+
+      // 🪄 3. 更新快速拼字倒數條
+      if (state.quickSpellTime > 0) {
+        state.quickSpellTime -= dt;
+        if (state.quickSpellTime < 0) state.quickSpellTime = 0;
+      }
+
+      // 🎬 4. 若正在播放過場動畫、勝利動畫或遊戲暫停，則凍結角色輸入與物理更新
+      if (state.screen !== "playing" || state.isPaused || state.isWinAnimating || state.transitionActive) return;
+
+      // 🪄 快速拼字：若有此技能且踩入藍色框框，則系統自動幫玩家全部拼好並消耗技能
+      const isAltar = Math.hypot(state.worldX, state.worldY) < 80;
+      if (isAltar && state.quickSpellTime > 0) {
+        state.inventory = state.targetWord.replace(/\s+/g, "").split("");
+        updateUI();
+        state.quickSpellTime = 0;
+      }
+
+      // ⚒️ 以下是原本的 update 物理與控制邏輯
       if (state.drillTime > 0) {
         state.drillTime -= dt;
         if (state.drillTime <= 0) spawnItem("drill");
@@ -1503,19 +2037,38 @@
       }
       if (state.boostTime > 0) state.boostTime -= dt;
 
-      const isAltar = Math.hypot(state.worldX, state.worldY) < 80;
+      // 🔊 更新狀態條的顯示與進度
+      document.getElementById("drill-bar").style.display =
+        state.drillTime > 0 ? "block" : "none";
+      document.getElementById("drill-fill").style.width =
+        (state.drillTime / 10000) * 100 + "%";
+      document.getElementById("signal-bar").style.display =
+        state.signalTime > 0 ? "block" : "none";
+      document.getElementById("signal-fill").style.width =
+        (state.signalTime / 8000) * 100 + "%";
+      document.getElementById("speed-bar").style.display =
+        state.boostTime > 0 ? "block" : "none";
+      document.getElementById("speed-fill").style.width =
+        (state.boostTime / 3000) * 100 + "%";
+
+      // 🪄 更新快速拼字狀態條
+      const qBar = document.getElementById("quickspell-bar");
+      if (qBar) {
+        qBar.style.display = state.quickSpellTime > 0 ? "block" : "none";
+        document.getElementById("quickspell-fill").style.width =
+          (state.quickSpellTime / 3000) * 100 + "%";
+      }
+
       const invHud = document.getElementById("inventory-hud");
       if (invHud) {
         invHud.classList.toggle("altar-active", isAltar);
       }
 
-      // 玩家踏入藍色框框瞬間，撥放拼字功能啟動音效
       if (isAltar && !state.inAltarLastFrame) {
         playSFX('altar');
       }
-      state.inAltarLastFrame = isAltar; // 紀錄當前狀態
+      state.inAltarLastFrame = isAltar;
 
-      // 要求 2: 在祭壇內即時判定勝負
       if (isAltar) checkWin();
 
       if (state.isSortingMode) return;
@@ -1552,9 +2105,9 @@
       if (!wX) {
         state.worldX += fx;
       } else {
-        if (state.drillTime > 0) {
+        if (state.drillTime > 0 && !wX.unbreakable) {
           state.walls = state.walls.filter((w) => w !== wX);
-          playSFX('break'); // 改用專門的破壞磚頭音效
+          playSFX('break');
         } else {
           hitWall = true;
         }
@@ -1564,70 +2117,100 @@
       if (!wY) {
         state.worldY += fy;
       } else {
-        if (state.drillTime > 0) {
+        if (state.drillTime > 0 && !wY.unbreakable) {
           state.walls = state.walls.filter((w) => w !== wY);
-          playSFX('break'); // 改用專門的破壞磚頭音效
+          playSFX('break');
         } else {
           hitWall = true;
         }
       }
 
-      // 當玩家按下移動鍵，且首次撞擊牆壁時，播放一次清脆碰擊聲
       if (hitWall && (fx !== 0 || fy !== 0)) {
         if (!state.wasCollidingLastFrame) {
-          playSFX('wall'); // 首次撞上：播放
+          playSFX('wall');
         }
-        state.wasCollidingLastFrame = true; // 鎖定狀態，按住不放時不再觸發
+        state.wasCollidingLastFrame = true;
       } else {
-        state.wasCollidingLastFrame = false; // 沒在撞牆或沒按鍵：解除鎖定，允許下次碰撞發聲
+        state.wasCollidingLastFrame = false;
       }
 
       state.speedPads.forEach((p) => {
         if (Math.hypot(p.x - state.worldX, p.y - state.worldY) < 30) {
-          playSFX('speed'); // 播放加速地板音效
+          playSFX('speed');
           state.boostTime = 3000;
         }
       });
+
+      // 撿起技能道具
       state.items = state.items.filter((it) => {
         if (Math.hypot(it.x - state.worldX, it.y - state.worldY) < 35) {
           if (it.type === "drill") {
             state.drillTime = 10000;
             playSFX('drill');
           }
-          if (it.type === "signal") {
+          else if (it.type === "signal") {
             state.signalTime = 8000;
             playSFX('signal');
+          }
+          // 🪄 吃到快速拼字：只有當背包中的所有字母都被收集齊全（沒有空位 ""）時才能撿起啟用
+          else if (it.type === "quickspell") {
+            const allCollected = !state.inventory.includes("");
+            if (allCollected) {
+              state.quickSpellTime = 3000;
+              playSFX('speed');
+              return false; // 移除地圖上的道具
+            } else {
+              return true; // 背包未齊，保留道具在地圖上不予吃掉
+            }
+          }
+          // 💡 吃到提示答案：即時將目前背包中有的字母進行正確排序
+          else if (it.type === "hint") {
+            const targetChars = state.targetWord.replace(/\s+/g, "").split("");
+            const collected = state.inventory.filter(c => c !== "");
+            const newInventory = new Array(targetChars.length).fill("");
+            for (let i = 0; i < targetChars.length; i++) {
+              const char = targetChars[i];
+              const idx = collected.indexOf(char);
+              if (idx !== -1) {
+                newInventory[i] = char;
+                collected.splice(idx, 1);
+              }
+            }
+            for (let i = 0; i < newInventory.length; i++) {
+              if (newInventory[i] === "" && collected.length > 0) {
+                newInventory[i] = collected.shift();
+              }
+            }
+            state.inventory = newInventory;
+            updateUI();
+            playSFX('letter');
           }
           return false;
         }
         return true;
       });
+
+      // 收集字母
       state.letters = state.letters.filter((l) => {
         if (Math.hypot(l.x - state.worldX, l.y - state.worldY) < 35) {
           const emptyIdx = state.inventory.indexOf("");
           if (emptyIdx !== -1) {
             state.inventory[emptyIdx] = l.char;
             updateUI();
-            playSFX('letter'); // 播放收集字母音效
+            playSFX('letter');
+
+            // 🎯 觸發內心話：當背包中收集的字母數剛好為 1 時（代表吃到第一個字母）
+            const collectedCount = state.inventory.filter(c => c !== "").length;
+            if (collectedCount === 1) {
+              triggerDialogue(l.char);
+            }
             return false;
           }
         }
         return true;
       });
-
-      document.getElementById("drill-bar").style.display =
-        state.drillTime > 0 ? "block" : "none";
-      document.getElementById("drill-fill").style.width =
-        (state.drillTime / 10000) * 100 + "%";
-      document.getElementById("signal-bar").style.display =
-        state.signalTime > 0 ? "block" : "none";
-      document.getElementById("signal-fill").style.width =
-        (state.signalTime / 8000) * 100 + "%";
-      document.getElementById("speed-bar").style.display =
-        state.boostTime > 0 ? "block" : "none";
-      document.getElementById("speed-fill").style.width =
-        (state.boostTime / 3000) * 100 + "%";
     }
+
 
     function checkWin() {
       // 如果正在播放勝利動畫，則直接跳過，防止計時器與動畫衝突
@@ -1636,8 +2219,13 @@
       if (state.inventory.join("") === state.targetWord.replace(/\s+/g, "")) {
         state.isWinAnimating = true; // 啟動過關與輸入物理鎖定
 
-        // 關鍵修復：將拼對的單字記錄到已解鎖陣列中
-        state.completedWords.push(state.targetWord);
+        // 如果是首次拼對，才加入累積已累積清單
+        if (!state.completedWords.includes(state.targetWord)) {
+          state.completedWords.push(state.targetWord);
+        }
+
+        // 累加該單字的練習次數
+        state.practiceCounts[state.targetWord] = (state.practiceCounts[state.targetWord] || 0) + 1;
 
         // 絕對鎖定：清空所有鍵盤與虛擬搖桿狀態，防止角色在此時位移
         state.keys = {};
@@ -1725,27 +2313,49 @@
           120,
           120,
         );
-        ctx.fillStyle = "#333";
-        state.walls.forEach((w) =>
+        state.walls.forEach((w) => {
+          if (w.unbreakable) {
+            ctx.fillStyle = "#1e1e24";
+            ctx.strokeStyle = "#3a3a45";
+            ctx.lineWidth = 2;
+          } else {
+            ctx.fillStyle = "#383838";
+            ctx.strokeStyle = "#505050";
+            ctx.lineWidth = 1;
+          }
+
           ctx.fillRect(
             cx + w.x - state.worldX,
             cy + w.y - state.worldY,
             w.w - 1,
             w.h - 1,
-          ),
-        );
+          );
+          ctx.strokeRect(
+            cx + w.x - state.worldX,
+            cy + w.y - state.worldY,
+            w.w - 1,
+            w.h - 1,
+          );
+        });
+
+        // 🎨 繪製技能點（包含新增的快速拼字與提示答案）
         state.items.forEach((it) => {
-          ctx.fillStyle = it.type === "drill" ? "#ffcc00" : "#00ff88";
+          if (it.type === "drill") ctx.fillStyle = "#ffcc00"; // 黃色
+          else if (it.type === "signal") ctx.fillStyle = "#00ff88"; // 綠色
+          else if (it.type === "quickspell") ctx.fillStyle = "#ff00ff"; // 粉紅色
+          else if (it.type === "hint") ctx.fillStyle = "#00bfff"; // 天空藍色
+
           ctx.beginPath();
           ctx.arc(
             cx + it.x - state.worldX,
             cy + it.y - state.worldY,
             18,
             0,
-            Math.PI * 2,
+            Math.PI * 2
           );
           ctx.fill();
         });
+
         state.letters.forEach((l) => {
           const lx = cx + l.x - state.worldX,
             ly = cy + l.y - state.worldY;
@@ -1778,10 +2388,112 @@
         ctx.fillRect(cx - 15, cy - 15, 30, 30);
         ctx.strokeStyle = "#00d2ff";
         ctx.strokeRect(cx - 15, cy - 15, 30, 30);
+
+        // 🎬 1. 過場動畫陰影遮罩繪製
+        if (state.transitionActive) {
+          const t = state.transitionTime;
+          let alpha = 0;
+          let outerRadius = 800;
+          const innerRadius = 25;
+
+          if (t < 400) {
+            const p = t / 400;
+            alpha = p;
+            outerRadius = 800 - (800 - 80) * p;
+          }
+          else if (t < 800) {
+            alpha = 1.0;
+            outerRadius = 80;
+          }
+          else {
+            const p = (t - 800) / 400;
+            alpha = 1.0 - p;
+            outerRadius = 80 + (800 - 80) * p;
+          }
+
+          ctx.save();
+          const grad = ctx.createRadialGradient(cx, cy, innerRadius, cx, cy, Math.max(innerRadius + 5, outerRadius));
+          grad.addColorStop(0, "rgba(0, 0, 0, 0)");
+          grad.addColorStop(1, `rgba(0, 0, 0, ${alpha})`);
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.restore();
+
+          if (t >= 300 && t < 900) {
+            ctx.save();
+            ctx.fillStyle = `rgba(0, 210, 255, ${t < 400 ? (t - 300) / 100 : (t > 800 ? (900 - t) / 100 : 1)})`;
+            ctx.font = "800 24px Inter";
+            ctx.textAlign = "center";
+            ctx.fillText("等待中...", cx, cy + 60);
+            ctx.restore();
+          }
+        }
+
+        // 💬 2. 角色內心話漂浮氣泡繪製
+        if (state.dialogue && state.dialogue.active) {
+          ctx.save();
+
+          const bubbleX = cx;
+          const bubbleY = cy - 40; // 角色頭頂上方
+          const text1 = state.dialogue.textLine1;
+          const text2 = state.dialogue.textLine2;
+
+          ctx.font = "bold 13px Inter";
+          const w1 = ctx.measureText(text1).width;
+          const w2 = ctx.measureText(text2).width;
+          const bubbleWidth = Math.max(w1, w2) + 24;
+          const bubbleHeight = 52;
+
+          // 氣泡背景樣式 (半透明深色玻璃質感 + 天藍色邊框)
+          ctx.fillStyle = "rgba(10, 10, 10, 0.9)";
+          ctx.strokeStyle = "#00d2ff";
+          ctx.lineWidth = 1.5;
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = "rgba(0, 210, 255, 0.3)";
+
+          // 繪製氣泡圓角矩形與對話指針
+          const rx = bubbleX - bubbleWidth / 2;
+          const ry = bubbleY - bubbleHeight;
+          const radius = 8;
+          ctx.beginPath();
+          ctx.moveTo(rx + radius, ry);
+          ctx.lineTo(rx + bubbleWidth - radius, ry);
+          ctx.quadraticCurveTo(rx + bubbleWidth, ry, rx + bubbleWidth, ry + radius);
+          ctx.lineTo(rx + bubbleWidth, ry + bubbleHeight - radius);
+          ctx.quadraticCurveTo(rx + bubbleWidth, ry + bubbleHeight, rx + bubbleWidth - radius, ry + bubbleHeight);
+
+          ctx.lineTo(bubbleX + 6, ry + bubbleHeight);
+          ctx.lineTo(bubbleX, ry + bubbleHeight + 6); // 三角指針頂點
+          ctx.lineTo(bubbleX - 6, ry + bubbleHeight);
+
+          ctx.lineTo(rx + radius, ry + bubbleHeight);
+          ctx.quadraticCurveTo(rx, ry + bubbleHeight, rx, ry + bubbleHeight - radius);
+          ctx.lineTo(rx, ry + radius);
+          ctx.quadraticCurveTo(rx, ry, rx + radius, ry);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // 繪製文字
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "#ffffff";
+          ctx.textAlign = "center";
+          ctx.font = "bold 12px Inter";
+          ctx.fillText(text1, bubbleX, ry + 20);
+          ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+          ctx.font = "500 11px Inter";
+          ctx.fillText(text2, bubbleX, ry + 38);
+
+          ctx.restore();
+        }
       }
       update(1000 / 60);
       requestAnimationFrame(draw);
     }
+
+    // 👈 貼上這行：確保切換畫面（如重新開始）時，立刻重置計時器警報樣式
+    const timerBox = document.getElementById("timer-box");
+    if (timerBox) timerBox.classList.remove("warning-active");
 
     // --- 其他控制 ---
     function changeScreen(id) {
@@ -1826,7 +2538,12 @@
                 (w) =>
                   `<div class="history-item" style="display: flex; justify-content: space-between; align-items: center;">
                          <div>
-                           <div class="history-en" style="font-weight: 800; font-size: 16px; color: #fff;">${w}</div>
+                                                      <div class="history-en" style="font-weight: 800; font-size: 16px; color: #fff; display: flex; align-items: center; gap: 8px;">
+                             ${w}
+                             <span style="font-weight: 400; font-size: 12px; color: #888;">
+                               (練習 ${state.practiceCounts[w] || 1} 次)
+                             </span>
+                           </div>
                            <div class="history-zh" style="color: var(--accent); font-size: 13px; margin-top: 2px;">${WORD_DB[w]?.zh || "自訂"}</div>
                          </div>
                          <!-- 🔊 語音發音按鈕 -->
@@ -1922,8 +2639,8 @@
         WORD_POOL = Object.keys(parsedDB);
 
         // 儲存網址設定至本地 LocalStorage
-        localStorage.setItem("scavenger_sheets_url", inputUrl);
-        localStorage.setItem("scavenger_cached_db", JSON.stringify(parsedDB));
+        localStorage.setItem("VOCAB_sheets_url", inputUrl);
+        localStorage.setItem("VOCAB_cached_db", JSON.stringify(parsedDB));
 
         // 自動同步至畫面的文字預覽框中
         populateTextareaFromDB();
@@ -1933,7 +2650,7 @@
         return true;
       } catch (e) {
         console.warn("雲端同步失敗，改嘗試載入本機快取:", e);
-        const cached = localStorage.getItem("scavenger_cached_db");
+        const cached = localStorage.getItem("VOCAB_cached_db");
         if (cached) {
           const parsedDB = JSON.parse(cached);
           WORD_DB = parsedDB;
@@ -1963,7 +2680,7 @@
       playSFX('mode');
       const success = await syncCloudSheets(urlInput, true);
       if (success) {
-        localStorage.removeItem("scavenger_manual_input");
+        localStorage.removeItem("VOCAB_manual_input");
       }
     }
 
@@ -1998,12 +2715,12 @@
 
       const urlInput = document.getElementById("sheets-url-input").value.trim();
       if (urlInput) {
-        localStorage.setItem("scavenger_sheets_url", urlInput);
+        localStorage.setItem("VOCAB_sheets_url", urlInput);
       } else {
-        localStorage.removeItem("scavenger_sheets_url");
-        localStorage.setItem("scavenger_manual_input", manualInput);
+        localStorage.removeItem("VOCAB_sheets_url");
+        localStorage.setItem("VOCAB_manual_input", manualInput);
       }
-      localStorage.setItem("scavenger_cached_db", JSON.stringify(newDB));
+      localStorage.setItem("VOCAB_cached_db", JSON.stringify(newDB));
 
       playSFX('mode');
       startGame();
@@ -2020,18 +2737,43 @@
       state.worldY = 0;
       state.timeLeft = 60;
       state.completedWords = [];
+
+      // 開始播放背景音樂，並設定適當音量
+      if (bgm) {
+        bgm.volume = 0.2;
+        bgm.muted = state.isMuted; // 同步靜音狀態
+        bgm.play().catch(e => console.warn("等待手勢解鎖以播放 BGM:", e));
+      }
+
       initLevel();
     }
 
     function resetCurrentLevel() {
       playSFX('reset'); // 播放重置關卡音效
+
+      // 關鍵修復：重置關卡時，將背景音樂恢復為正常音量 (0.2)
+      if (typeof bgm !== 'undefined' && bgm) {
+        bgm.volume = 0.2;
+      }
+
+      // 🎬 啟動過場動畫狀態
+      state.transitionActive = true;
+      state.transitionTime = 0;
+      state.transitionTriggered = false;
       state.timeLeft = 60;
+
       changeScreen("playing");
-      initLevel();
     }
 
     function handleGoHome() {
       playSFX('home'); // 播放退場首頁音效
+
+      // 停止背景音樂並將進度條重置回開頭
+      if (bgm) {
+        bgm.pause();
+        bgm.currentTime = 0;
+      }
+
       setTimeout(() => {
         location.reload(); // 延遲 300 毫秒後再重新整理，確保音效播完
       }, 300);
@@ -2042,8 +2784,13 @@
     }
 
     function toggleMenu() {
-      if (state.screen === "playing") changeScreen("system-menu");
-      else if (state.screen === "system-menu") changeScreen("playing");
+      if (state.screen === "playing") {
+        changeScreen("system-menu");
+        if (bgm) bgm.volume = 0.05; // 暫停時音樂變非常小聲
+      } else if (state.screen === "system-menu") {
+        changeScreen("playing");
+        if (bgm) bgm.volume = 0.2;  // 恢復遊戲時音樂恢復音量
+      }
     }
 
     function resize() {
@@ -2052,18 +2799,33 @@
     }
 
     // --- 定時器計時與提示器 ---
+    // --- 定時器計時與提示器 ---
     setInterval(() => {
-      if (state.screen === "playing" && !state.isPaused) {
+      // 👈 修改這行：在過場動畫期間 (!state.transitionActive) 凍結倒數時間，確保公平
+      if (state.screen === "playing" && !state.isPaused && !state.transitionActive) {
         state.timeLeft--;
         document.getElementById("time-val").innerText = state.timeLeft;
 
-        // 僅在倒數剛好來到「第 10 秒」的當下播放一次明朗提示音
-        if (state.timeLeft === 10) {
+        const timerBox = document.getElementById("timer-box");
+
+        // ⏰ 倒數 15 秒（包含）以內：啟動紅字抖動警報與每秒雷射槍音效 (Pew Pew!)
+        if (state.timeLeft <= 15 && state.timeLeft > 0) {
+          if (timerBox) timerBox.classList.add("warning-active");
           playSFX('warning');
+        } else {
+          if (timerBox) timerBox.classList.remove("warning-active");
         }
 
         if (state.timeLeft <= 0) {
+          if (timerBox) timerBox.classList.remove("warning-active");
           playSFX('fail'); // 播放遊戲結束/失敗音效
+
+          // 遊戲失敗時停止背景音樂
+          if (bgm) {
+            bgm.pause();
+            bgm.currentTime = 0;
+          }
+
           changeScreen("game-over-screen");
         }
       }
@@ -2071,8 +2833,12 @@
 
     // 遊戲每次打開時，自動呼叫的同步啟動程序
     function autoLoadAndSync() {
-      const savedUrl = localStorage.getItem("scavenger_sheets_url");
-      const savedManualText = localStorage.getItem("scavenger_manual_input");
+      // 👈 🔊 新增：初始化靜音按鈕圖示與音樂靜音設定
+      updateMuteUI();
+      applyMuteState();
+
+      const savedUrl = localStorage.getItem("VOCAB_sheets_url");
+      const savedManualText = localStorage.getItem("VOCAB_manual_input");
 
       if (savedManualText) {
         const txtArea = document.getElementById("custom-input");
@@ -2082,7 +2848,7 @@
       if (savedUrl) {
         syncCloudSheets(savedUrl);
       } else {
-        const cached = localStorage.getItem("scavenger_cached_db");
+        const cached = localStorage.getItem("VOCAB_cached_db");
         if (cached) {
           const parsedDB = JSON.parse(cached);
           WORD_DB = parsedDB;
@@ -2098,19 +2864,34 @@
         // 取消當前可能正在播放的其他發音
         window.speechSynthesis.cancel();
 
+        // 🔊 核心修復：發音開始時，將背景音樂 BGM 降至極低音量，避免蓋過發音
+        if (typeof bgm !== 'undefined' && bgm) {
+          bgm.volume = 0.03; // 音樂降低至 3%
+        }
+
         const cleanWord = word.replace(/_/g, ' ');
         const utterance = new SpeechSynthesisUtterance(cleanWord);
         utterance.lang = 'en-US';
-        utterance.rate = 0.85;
+        utterance.rate = 1.0;
+        utterance.volume = state.isMuted ? 0.0 : 1.0; // 👈 🔊 修改：靜音時將 TTS 音量設為 0
+
+        // 輔助函數：恢復背景音樂音量（直接依據當前畫面即時決定恢復音量，避免覆寫）
+        const restoreBGMVolume = () => {
+          if (typeof bgm !== 'undefined' && bgm) {
+            // 語音結束時：若玩家仍在暫停選單中就恢復為 0.05；若玩家已回到遊戲中則恢復為 0.2
+            bgm.volume = (state.screen === 'system-menu') ? 0.05 : 0.2;
+          }
+        };
 
         // 如果有傳入結束後的回呼函數
         if (onEndCallback) {
           let hasTriggeredEnd = false;
 
-          // 安全鎖：若瀏覽器語音系統卡死，2.5秒內一定強行切換下一關
+          // 安全鎖：若語音系統卡死，2.5秒內一定強行切換下一關並恢復音樂音量
           const safetyFallback = setTimeout(() => {
             if (!hasTriggeredEnd) {
               hasTriggeredEnd = true;
+              restoreBGMVolume();
               onEndCallback();
             }
           }, 2500);
@@ -2120,6 +2901,7 @@
             if (!hasTriggeredEnd) {
               hasTriggeredEnd = true;
               clearTimeout(safetyFallback);
+              restoreBGMVolume();
               onEndCallback();
             }
           };
@@ -2129,9 +2911,15 @@
             if (!hasTriggeredEnd) {
               hasTriggeredEnd = true;
               clearTimeout(safetyFallback);
+              restoreBGMVolume();
               onEndCallback();
             }
           };
+        } else {
+          // 若無回呼函數（例如點擊歷史紀錄發音），依然在播完或超時後恢復背景音樂
+          utterance.onend = () => restoreBGMVolume();
+          utterance.onerror = () => restoreBGMVolume();
+          setTimeout(restoreBGMVolume, 2500);
         }
 
         window.speechSynthesis.speak(utterance);
@@ -2169,6 +2957,81 @@
     // --- 統一初始化與啟動程序 ---
     window.addEventListener("resize", resize);
     resize();
+
+    // --- 💡 角色內心話與記事本核心邏輯 ---
+    function triggerDialogue(letter) {
+      if (state.dialogue && state.dialogue.active) return; // 避免動畫重疊
+
+      const startLetter = letter.toUpperCase();
+      // 從全域字庫中，選取開頭相同且長度為 3 或 4 的單字作為線索
+      const candidateWords = WORD_POOL.filter(w => {
+        const clean = w.replace(/\s+/g, "");
+        return clean.startsWith(startLetter) && (clean.length === 3 || clean.length === 4);
+      });
+
+      // 隨機選出兩個提示詞
+      const list = candidateWords.length >= 2 ? candidateWords : (FALLBACK_HINTS[startLetter] || ["WORD"]);
+      const shuffled = [...list].sort(() => Math.random() - 0.5);
+      const w1 = shuffled[0] || "WORD";
+      const w2 = shuffled[1] || shuffled[0] || "WORD";
+
+      const line1 = `哦! 是字母 "${startLetter}"`;
+      const line2 = `會是 ${w1} 嗎？還是 ${w2}...？`;
+
+      // 啟動頭頂氣泡，設定 3.5 秒後消失
+      state.dialogue = {
+        active: true,
+        textLine1: line1,
+        textLine2: line2,
+        timer: 3500
+      };
+
+      // 寫入記事本線索清單
+      const clueTitle = `線索 ${state.notebook.length + 1}`;
+      state.notebook.push({
+        title: clueTitle,
+        zh: WORD_DB[state.targetWord]?.zh || "自訂",
+        text: `${line1}\n${line2}`
+      });
+
+      updateNotebookUI();
+    }
+
+    function updateNotebookUI() {
+      const list = document.getElementById("notebook-list");
+      if (list) {
+        list.innerHTML = state.notebook.map(item => `
+          <div class="history-item" style="border-bottom: 1px solid #222; padding-bottom: 8px; margin-bottom: 8px; text-align: left;">
+            <div style="font-weight: 800; font-size: 13px; color: var(--accent);">${item.title} (中文: ${item.zh})</div>
+            <div style="color: #bbb; font-size: 12px; margin-top: 4px; white-space: pre-line;">${item.text}</div>
+          </div>
+        `).join("") || "尚未記錄任何線索";
+      }
+    }
+
+
+    // --- 🔊 新增：靜音按鈕控制功能 ---
+    function toggleMute(e) {
+      if (e) e.stopPropagation();
+      state.isMuted = !state.isMuted;
+      localStorage.setItem("vocab_muted", state.isMuted);
+      updateMuteUI();
+      applyMuteState();
+    }
+
+    function updateMuteUI() {
+      const icon = state.isMuted ? "🔇" : "🔊";
+      const btnMode = document.getElementById("mute-btn-mode");
+      const btnSystem = document.getElementById("mute-btn-system");
+      if (btnMode) btnMode.innerText = icon;
+      if (btnSystem) btnSystem.innerText = icon;
+    }
+
+    function applyMuteState() {
+      if (typeof bgm !== 'undefined' && bgm) {
+        bgm.muted = state.isMuted;
+      }
+    }
 
     // 先加載並自動同步數據
     autoLoadAndSync();

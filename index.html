@@ -1429,7 +1429,8 @@
         3: ["PROJECT", "STUDENT", "TEACHER", "LIBRARY", "COMPUTER", "WEAR OUT"]
       };
 
-      let WORD_DB = {
+      // 🆕 備份一份唯讀的預設單字庫，隨時供系統還原
+      const DEFAULT_WORD_DB = {
         // 第一關 (3-4 字)
         BOX: { zh: "盒子", pos: "n." },
         FOX: { zh: "狐狸", pos: "n." },
@@ -1458,6 +1459,9 @@
         COMPUTER: { zh: "電腦", pos: "n." },
         "WEAR OUT": { zh: "用壞", pos: "v. ph." }
       };
+
+      // 執行期間使用的動態單字庫與單字池
+      let WORD_DB = JSON.parse(JSON.stringify(DEFAULT_WORD_DB));
       let WORD_POOL = Object.keys(WORD_DB);
 
       let state = {
@@ -1969,9 +1973,24 @@
           }
           const idx = Math.floor(Math.random() * state.availableWords.length);
           state.targetWord = state.availableWords.splice(idx, 1)[0];
+          state.roundLives = 3; // 換新單字時才重設生命值為 3
+          state.firstFailHint = null; // 🆕 核心修正：換新單字時，清空上一個單字的提示配置
         }
 
-        state.inventory = [];
+        // 🆕 核心修正：提前取得單字字母，並在此處優先初始化與預填提示字母
+        const chars = state.targetWord.replace(/\s+/g, "").split("");
+        state.inventory = new Array(chars.length).fill("");
+        state.lockedSlots = new Array(chars.length).fill(false);
+
+        if (state.firstFailHint && state.firstFailHint.length === chars.length) {
+          for (let i = 0; i < chars.length; i++) {
+            if (state.firstFailHint[i]) {
+              state.inventory[i] = chars[i];
+              state.lockedSlots[i] = true;
+            }
+          }
+        }
+
         state.letters = [];
         state.walls = [];
         state.items = [];
@@ -1983,12 +2002,14 @@
         state.worldY = 0; // 重置角色 Y 座標到地圖中央
 
         // 👈 貼入：對話與技能狀態初始化
+        // 👈 貼入：對話與技能狀態初始化
         state.dialogue = { active: false, textLine1: "", textLine2: "", timer: 0 };
         state.quickSpellTime = 0;
-        state.lockedSlots = [];
-        state.roundLives = 3; // 🆕 每次關卡載入重設生命值為 3
+        if (!keepWord) {
+          state.roundLives = 3; // 🆕 核心修正：只有開啟新單字挑戰時才初始化生命值為 3，重試時保留原有生命值
+        }
 
-        // 📓 每次關卡初始化或重置時，清空記事本線索並同步刷新 UI 介面
+        // 📓 每次關卡初始化或重置時，清空記事本線索
         state.notebook = [];
         updateNotebookUI();
 
@@ -2135,17 +2156,30 @@
         }
 
         // 🔠 6. 散落字母與防護罩生成
-        const chars = state.targetWord.replace(/\s+/g, "").split("");
+        // 🆕 核心修正：移除重複的 const 宣告，直接使用最上方已定義的 chars
+        chars;
+
+        // 🆕 核心修正：只對尚未提示且未鎖定的字母索引，進行防護罩與地圖散落生成
+        const activeIndices = [];
+        for (let i = 0; i < chars.length; i++) {
+          if (!state.lockedSlots[i]) {
+            activeIndices.push(i);
+          }
+        }
+
         const encasedIndices = [];
-        const numEncased = Math.min(chars.length, 1 + Math.floor(Math.random() * 2));
-        while (encasedIndices.length < numEncased) {
-          const randIdx = Math.floor(Math.random() * chars.length);
+        const numEncased = Math.min(activeIndices.length, 1 + Math.floor(Math.random() * 2));
+        while (encasedIndices.length < numEncased && activeIndices.length > 0) {
+          const randIdx = activeIndices[Math.floor(Math.random() * activeIndices.length)];
           if (!encasedIndices.includes(randIdx)) {
             encasedIndices.push(randIdx);
           }
         }
 
         chars.forEach((char, index) => {
+          // 🆕 核心修正：如果該位置的字母在提示中已被預填並鎖定，就不再地圖上生成實體字母
+          if (state.lockedSlots[index]) return;
+
           const targetRoom = rooms[index % rooms.length];
           let rx = 0, ry = 0;
           let found = false;
@@ -2230,8 +2264,7 @@
           }
         });
 
-        state.inventory = new Array(chars.length).fill("");
-        state.lockedSlots = new Array(chars.length).fill(false); // 👈 在 chars 被定義之後才初始化
+        // 👈 舊的 state.inventory 與 state.lockedSlots 初始化及預填程式碼已刪除，改保留至最前端
 
         let padCount = 0;
         let padAttempts = 0;
@@ -2289,7 +2322,7 @@
         spawnItem("drill");
         spawnItem("signal");
         updateUI();
-      }
+      } // 👈 🆕 核心修正：大括號現在正確閉合了整個 initLevel 函式！
 
       // --- 拖曳與 UI ---
       // --- 拖曳與觸控 UI (支援滑鼠與手機平板手指拖曳) ---
@@ -3308,15 +3341,8 @@
 
           if (state.timeLeft <= 0) {
             if (timerBox) timerBox.classList.remove("warning-active");
-            playSFX('fail'); // 播放遊戲結束/失敗音效
-
-            // 遊戲失敗時停止背景音樂
-            if (bgm) {
-              bgm.pause();
-              bgm.currentTime = 0;
-            }
-
-            changeScreen("game-over-screen");
+            // 🆕 核心修正：時間結束，對接至統一的補救機制
+            handleRoundFailure("timeout");
           }
         }
       }, 1000);
@@ -3557,6 +3583,8 @@
       function selectLevel(lvl) {
         playSFX('mode');
         state.currentLevel = lvl;
+        // 🆕 核心修正：切換回系統預設關卡時，強制還原單字庫，避免自訂單字殘留混入
+        WORD_DB = JSON.parse(JSON.stringify(DEFAULT_WORD_DB));
         WORD_POOL = LEVEL_POOLS[lvl] || LEVEL_POOLS[1];
         state.invisibleWalls = false; // 預設關卡強制關閉隱形牆壁
         changeScreen('instructions-screen'); // 選擇完前往規則說明頁面
@@ -3566,6 +3594,84 @@
       function startGameNow() {
         playSFX('mode');
         startGame();
+      }
+
+      // 🆕 核心新增：生成透露一半字母的拼字提示字串 (例如 "APPLE" -> "APP**")
+      function getHalfWordHint(word) {
+        const clean = word.replace(/\s+/g, "");
+        const halfLen = Math.ceil(clean.length / 2);
+        let hint = "";
+        let count = 0;
+        for (let i = 0; i < word.length; i++) {
+          if (word[i] === " ") {
+            hint += " ";
+          } else {
+            if (count < halfLen) {
+              hint += word[i];
+            } else {
+              hint += "*";
+            }
+            count++;
+          }
+        }
+        return hint;
+      }
+
+      // 🆕 核心新增：隨機選取前半段或後半段字母透露，並儲存至 state.firstFailHint 用於槽位預填與鎖定
+      function generateFirstFailHint(word) {
+        const chars = word.replace(/\s+/g, "").split("");
+        const halfLen = Math.ceil(chars.length / 2);
+        const isSecondHalf = Math.random() < 0.5; // 🎲 50% 機率決定透露前半段或後半段
+
+        const lockedIndices = new Array(chars.length).fill(false);
+        let hintStr = "";
+
+        for (let i = 0; i < chars.length; i++) {
+          const shouldReveal = isSecondHalf ? (i >= chars.length - halfLen) : (i < halfLen);
+          if (shouldReveal) {
+            lockedIndices[i] = true;
+            hintStr += chars[i];
+          } else {
+            hintStr += "*";
+          }
+        }
+
+        state.firstFailHint = lockedIndices; // 儲存鎖定指引
+        return hintStr;
+      }
+
+      // 統一「拼錯」與「倒數計時結束」時的三階段補救機制
+      async function handleRoundFailure(reason) {
+        state.isPaused = true;
+        playSFX('fail');
+
+        // 扣除生命值
+        state.roundLives--;
+        updateUI();
+
+        if (state.roundLives === 2) {
+          // 📌 第一次失敗：隨機挑選前半或後半段提示，並預填入玩家的槽位中
+          const hint = generateFirstFailHint(state.targetWord);
+          const confirmRetry = await safeConfirm(
+            `挑戰失敗！(時間終了或拼字錯誤)\n\n單字提示為：【${hint}】\n\n系統已自動為您在格子中「預填並鎖定」此提示字母！\n您是否要消耗一次生命進行第二次嘗試？`
+          );
+
+          if (confirmRetry) {
+            // 重新給予 60 秒，保留原單字重刷地圖（會自動將提示字母填入槽中且地圖上不生成）
+            state.timeLeft = 60;
+            state.isPaused = false;
+            initLevel(true);
+          } else {
+            // 放棄則直接結束
+            triggerGameOver(reason);
+          }
+        } else if (state.roundLives === 1) {
+          // 📌 第二次失敗：直接開啟救援選擇題（此選擇題即為第三次/最後的機會）
+          showAltarQuiz();
+        } else {
+          // 安全守護：直接失敗
+          triggerGameOver(reason);
+        }
       }
 
       // 點擊送出拼字答案進行驗收
@@ -3579,19 +3685,8 @@
           // 拼字正確，觸發原本的勝利流程
           triggerWin();
         } else {
-          // 拼字錯誤，扣除生命值
-          state.roundLives--;
-          updateUI();
-
-          if (state.roundLives === 2) {
-            playSFX('fail');
-            alert("拼字錯誤！還剩 2 次機會，請重新拼湊。");
-          } else if (state.roundLives === 1) {
-            playSFX('fail');
-            showAltarQuiz(); // 觸發救援選擇題
-          } else {
-            triggerGameOver("lives"); // 扣光生命值，直接失敗
-          }
+          // 🆕 核心修正：拼字錯誤，轉由統一補救機制處理
+          handleRoundFailure("spelling-fail");
         }
       }
 
@@ -3728,6 +3823,21 @@
           const inputEl = document.getElementById("dialog-input");
           inputEl.value = defaultVal;
 
+          // 🆕 核心修正：攔截輸入框內的鍵盤事件防止冒泡到全域遊戲控制，允許正常打字與 Enter/Esc 送出
+          inputEl.onkeydown = (e) => {
+            if (e.code === "Enter") {
+              e.preventDefault();
+              document.getElementById("dialog-btn-confirm").click();
+            } else if (e.code === "Escape") {
+              e.preventDefault();
+              document.getElementById("dialog-btn-cancel").click();
+            }
+            e.stopPropagation();
+          };
+          inputEl.onkeyup = (e) => {
+            e.stopPropagation();
+          };
+
           const confirmBtn = document.getElementById("dialog-btn-confirm");
           const cancelBtn = document.getElementById("dialog-btn-cancel");
           cancelBtn.style.display = "block";
@@ -3756,6 +3866,37 @@
         });
       }
 
+      // 🆕 新增：沙盒安全對話框代理 (防止編輯器 iframe 限制導致 confirm/prompt 崩潰)
+      async function safeConfirm(msg) {
+        try {
+          return await showCustomConfirm("確認操作 / CONFIRM", msg);
+        } catch (e) {
+          console.warn("showCustomConfirm 被瀏覽器沙盒限制，自動確認:", e);
+          return true; // 預設通過
+        }
+      }
+
+      async function safePrompt(msg, defaultVal) {
+        try {
+          const val = await showCustomPrompt("輸入資料 / INPUT", msg, defaultVal);
+          return val !== null ? val : defaultVal;
+        } catch (e) {
+          console.warn("showCustomPrompt 被瀏覽器沙盒限制，套用預設值:", e);
+          return defaultVal; // 預設套用原值
+        }
+      }
+
+      async function safeAlert(msg) {
+        try {
+          await showCustomAlert("系統提示 / NOTICE", msg);
+        } catch (e) {
+          console.warn("showCustomAlert 被瀏覽器沙盒限制:", e);
+        }
+      }
+
+      // 🆕 核心新增：延遲輔助器，用於防止對話框點擊穿透
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
       // 選擇特定儲存槽 (1, 2, 3) 進行存或讀 (重構防崩潰版)
       async function selectSlot(slotNum) {
         const mode = state.slotMode;
@@ -3764,21 +3905,15 @@
         console.log(`儲存槽操作: slot=${slotNum}, mode=${mode}`);
 
         if (mode === "save") {
-          // 檢查該槽位是否有舊存檔，若有才問覆蓋
-          const rawData = localStorage.getItem(slotKey);
-          let confirmSave = true;
-          if (rawData) {
-            confirmSave = await showCustomConfirm("覆蓋存檔 / OVERWRITE SAVE", `您確定要將遊戲進度儲存至「儲存槽 ${slotNum}」嗎？這將覆蓋原有的存檔資料。`);
-          } else {
-            // 如果是空槽，不警告覆蓋，僅確認是否存檔
-            confirmSave = await showCustomConfirm("儲存進度 / SAVE GAME", `您確定要將遊戲進度儲存至「儲存槽 ${slotNum}」嗎？`);
-          }
+          // 使用 safeConfirm 防手誤詢問
+          const confirmSave = await safeConfirm(`您確定要將遊戲進度儲存至「儲存槽 ${slotNum}」嗎？這將覆蓋原有的存檔資料。`);
           if (!confirmSave) return;
 
-          // 提示輸入玩家姓名
+          await sleep(150); // 🆕 核心防錯：在兩個對話框之間加入 150ms 延遲，防止點擊穿透
+
+          // 使用 safePrompt 提示輸入玩家姓名
           const defaultName = state.playerName || "Player";
-          const name = await showCustomPrompt("輸入名稱 / ENTER NAME", "請輸入您的玩家名稱：", defaultName);
-          if (name === null) return; // 使用者點選取消
+          const name = await safePrompt("請輸入您的玩家名稱：", defaultName);
           state.playerName = name.trim() || "Player";
 
           // 獲取當前年月日
@@ -3793,11 +3928,14 @@
             timeLeft: state.timeLeft,
             playTime: state.playTime || 0,
             playerName: state.playerName,
-            saveDate: dateStr
+            saveDate: dateStr,
+            wordDB: WORD_DB // 將當下遊玩中的單字庫整份寫入此存檔槽
           };
 
           localStorage.setItem(slotKey, JSON.stringify(saveState));
-          await showCustomAlert("儲存成功 / SAVE SUCCESS", `進度已成功儲存至「儲存槽 ${slotNum}」！`);
+
+          await sleep(150); // 🆕 延遲 150ms 彈出成功提示，防止點擊事件疊加
+          await safeAlert(`進度已成功儲存至「儲存槽 ${slotNum}」！`);
 
           refreshSlotsDisplay();
           updateStartMenuSaveInfo();
@@ -3806,14 +3944,14 @@
         } else if (mode === "load") {
           const rawData = localStorage.getItem(slotKey);
           if (!rawData) {
-            await showCustomAlert("無存檔資料 / NO SAVE DATA", `「儲存槽 ${slotNum}」為空，沒有資料可以載入！`);
+            await safeAlert(`「儲存槽 ${slotNum}」為空，沒有資料可以載入！`);
             return;
           }
 
           const saveState = JSON.parse(rawData);
 
-          // 詢問讀檔確認
-          const confirmLoad = await showCustomConfirm("讀取進度 / LOAD GAME", `您確定要載入「儲存槽 ${slotNum}」（玩家：${saveState.playerName || "無名"}）的進度嗎？這將會覆蓋您當前所有的進度。`);
+          // 使用 safeConfirm 詢問讀檔確認
+          const confirmLoad = await safeConfirm(`您確定要載入「儲存槽 ${slotNum}」（玩家：${saveState.playerName || "無名"}）的進度嗎？這將會覆蓋您當前所有的進度。`);
           if (!confirmLoad) return;
 
           try {
@@ -3825,15 +3963,23 @@
             state.playTime = saveState.playTime || 0;
             state.playerName = saveState.playerName || "Player";
 
-            // 還原對應的單字庫
-            if (state.currentLevel === "custom") {
-              const cached = localStorage.getItem("VOCAB_cached_db");
-              if (cached) {
-                WORD_DB = JSON.parse(cached);
-                WORD_POOL = Object.keys(WORD_DB);
-              }
+            // 如果存檔中存有當時的單字庫，直接完整還原該單字庫與單字池
+            if (saveState.wordDB) {
+              WORD_DB = saveState.wordDB;
+              WORD_POOL = Object.keys(WORD_DB);
             } else {
-              WORD_POOL = LEVEL_POOLS[state.currentLevel] || LEVEL_POOLS[1];
+              // 舊存檔相容邏輯
+              if (state.currentLevel === "custom") {
+                const cached = localStorage.getItem("VOCAB_cached_db");
+                if (cached) {
+                  WORD_DB = JSON.parse(cached);
+                  WORD_POOL = Object.keys(WORD_DB);
+                }
+              } else {
+                // 預設關卡則還原為預設庫
+                WORD_DB = JSON.parse(JSON.stringify(DEFAULT_WORD_DB));
+                WORD_POOL = LEVEL_POOLS[state.currentLevel] || LEVEL_POOLS[1];
+              }
             }
 
             state.isPaused = false;
@@ -3842,20 +3988,24 @@
             state.recentCompletedWords = [];
 
             if (bgm) {
-              bgm.volume = 0.15;
+              bgm.volume = 0.1;
               bgm.muted = state.isMuted;
               bgm.play().catch(() => { });
             }
 
             changeScreen("playing");
             initLevel(false);
-            await showCustomAlert("載入成功 / LOAD SUCCESS", `成功載入「儲存槽 ${slotNum}」的進度！`);
+
+            await sleep(150); // 🆕 讀檔完成後，延遲 150ms 彈出成功提示
+            await safeAlert(`成功載入「儲存槽 ${slotNum}」的進度！`);
           } catch (e) {
             console.error("載入失敗:", e);
-            await showCustomAlert("載入失敗 / LOAD FAILED", "載入失敗：存檔結構毀損或格式不支援。");
+            await sleep(150);
+            await safeAlert("載入失敗：存檔結構毀損或格式不支援。");
           }
         }
       }
+
 
       function triggerGameOver(reason) {
         const title = document.getElementById("game-over-title");
@@ -3905,20 +4055,23 @@
         changeScreen("altar-quiz-screen");
       }
 
-      function submitAltarQuiz(idx) {
+      async function submitAltarQuiz(idx) {
         playSFX('mode');
         if (idx === state.altarQuizCorrectIdx) {
-          alert("恭喜答對！成功拯救通關。");
-          // 自動幫玩家全部拼好
+          await safeAlert("恭喜答對！成功解鎖並通關。");
+
+          // 🆕 核心修正：答對後自動填滿所有字母槽並全部鎖定為正確狀態
           state.inventory = state.targetWord.replace(/\s+/g, "").split("");
+          state.lockedSlots = new Array(state.inventory.length).fill(true);
           updateUI();
 
+          // 切回遊戲畫面並直接觸發勝利過關流程 (這會自動唸出發音)
           changeScreen("playing");
           triggerWin();
         } else {
-          alert(`答錯了！正確答案是： ${state.targetWord}`);
+          await safeAlert(`答錯了！正確答案是：「${state.targetWord}」`);
           state.roundLives = 0;
-          triggerGameOver("lives");
+          triggerGameOver("quiz-fail");
         }
       }
 

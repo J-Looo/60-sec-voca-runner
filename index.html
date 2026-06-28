@@ -465,30 +465,37 @@
       /* 🆕 核心修正：攔截觸控防止穿透 */
     }
 
-    .status-bar {
-      width: 110px;
-      /* 👈 從 180px 縮短為 130px */
-      padding: 8px;
-      /* 👈 稍微縮小內邊距，留出更多內部空間給文字 */
-      background: rgba(0, 0, 0, 0.8);
-      border-radius: 10px;
-      border: 1px solid #444;
-      display: none;
+    /* 🆕 圓環狀態指示器本體 */
+    .status-circle {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.6);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      position: relative;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      transition: opacity 0.3s;
     }
 
-    .bar-container {
-      width: 100%;
-      height: 5px;
-      background: #222;
-      border-radius: 3px;
-      margin-top: 6px;
-      overflow: hidden;
+    /* 🆕 核心圓環遮罩：利用內置圓遮住圓心，製造環狀進度條效果 */
+    .status-circle::after {
+      content: '';
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      background: #0a0a0a;
+      /* 與網頁深黑色背景融為一體 */
+      border-radius: 50%;
+      z-index: 1;
     }
 
-    .bar-fill {
-      height: 100%;
-      width: 100%;
-      transition: width 0.1s linear;
+    /* 🆕 文字與圖示疊加層 */
+    .status-icon {
+      font-size: 18px;
+      z-index: 2;
     }
 
     @keyframes blink {
@@ -916,36 +923,20 @@
       </div>
 
       <div id="status-column">
-        <div id="quickspell-bar" class="status-bar">
-          <span style="color: #ff00ff; font-size: 11px; font-weight: 800">🪄 快速拼字啟動</span>
-          <div class="bar-container">
-            <div class="bar-fill" id="quickspell-fill" style="background: #ff00ff"></div>
-          </div>
+        <div id="status-quickspell" class="status-circle" style="display: none;" title="快速拼字">
+          <span class="status-icon">🪄</span>
         </div>
-        <div id="drill-bar" class="status-bar">
-          <span style="color: #ffcc00; font-size: 11px; font-weight: 800">⚒️ 鑽頭功能啟動</span>
-          <div class="bar-container">
-            <div class="bar-fill" id="drill-fill" style="background: #ffcc00"></div>
-          </div>
+        <div id="status-drill" class="status-circle" style="display: none;" title="鑽頭探勘">
+          <span class="status-icon">⚒️</span>
         </div>
-        <div id="signal-bar" class="status-bar">
-          <span style="color: #00ff88; font-size: 11px; font-weight: 800">📡 追蹤訊號啟動</span>
-          <div class="bar-container">
-            <div class="bar-fill" id="signal-fill" style="background: #00ff88"></div>
-          </div>
+        <div id="status-signal" class="status-circle" style="display: none;" title="雷達追蹤">
+          <span class="status-icon">📡</span>
         </div>
-        <div id="speed-bar" class="status-bar">
-          <span style="
-                color: var(--speed-boost);
-                font-size: 11px;
-                font-weight: 800;
-              ">⚡ 超速移動中</span>
-          <div class="bar-container">
-            <div class="bar-fill" id="speed-fill" style="background: var(--speed-boost)"></div>
-          </div>
+        <div id="status-speed" class="status-circle" style="display: none;" title="超速移動">
+          <span class="status-icon">⚡</span>
         </div>
       </div>
-    </div>
+    </div> <!-- 🆕 核心修正：補上此閉合標籤，將 #game-hud 正確閉合，防止後續選單繼承穿透屬性 -->
 
     <!-- 5. 系統選單 (要求 3: 雙欄顯示 + 存檔按鈕) -->
     <div id="system-menu" class="screen" style="
@@ -2500,26 +2491,52 @@
         }
         if (state.boostTime > 0) state.boostTime -= dt;
 
-        // 🔊 更新狀態條的顯示與進度
-        document.getElementById("drill-bar").style.display =
-          state.drillTime > 0 ? "block" : "none";
-        document.getElementById("drill-fill").style.width =
-          (state.drillTime / 10000) * 100 + "%";
-        document.getElementById("signal-bar").style.display =
-          state.signalTime > 0 ? "block" : "none";
-        document.getElementById("signal-fill").style.width =
-          (state.signalTime / 8000) * 100 + "%";
-        document.getElementById("speed-bar").style.display =
-          state.boostTime > 0 ? "block" : "none";
-        document.getElementById("speed-fill").style.width =
-          (state.boostTime / 3000) * 100 + "%";
+        // 🪄 更新快速拼字圓形環狀進度條
+        const elQs = document.getElementById("status-quickspell");
+        if (elQs) {
+          if (state.quickSpellTime > 0) {
+            elQs.style.display = "flex";
+            const pct = (state.quickSpellTime / 3000) * 100;
+            elQs.style.background = `conic-gradient(#ff00ff ${pct}%, rgba(255, 255, 255, 0.1) ${pct}%)`;
+          } else {
+            elQs.style.display = "none";
+          }
+        }
 
-        // 🪄 更新快速拼字狀態條
-        const qBar = document.getElementById("quickspell-bar");
-        if (qBar) {
-          qBar.style.display = state.quickSpellTime > 0 ? "block" : "none";
-          document.getElementById("quickspell-fill").style.width =
-            (state.quickSpellTime / 3000) * 100 + "%";
+        // ⚒️ 更新鑽頭功能圓形環狀進度條
+        const elDrill = document.getElementById("status-drill");
+        if (elDrill) {
+          if (state.drillTime > 0) {
+            elDrill.style.display = "flex";
+            const pct = (state.drillTime / 10000) * 100;
+            elDrill.style.background = `conic-gradient(#ffcc00 ${pct}%, rgba(255, 255, 255, 0.1) ${pct}%)`;
+          } else {
+            elDrill.style.display = "none";
+          }
+        }
+
+        // 📡 更新追蹤訊號圓形環狀進度條
+        const elSignal = document.getElementById("status-signal");
+        if (elSignal) {
+          if (state.signalTime > 0) {
+            elSignal.style.display = "flex";
+            const pct = (state.signalTime / 8000) * 100;
+            elSignal.style.background = `conic-gradient(#00ff88 ${pct}%, rgba(255, 255, 255, 0.1) ${pct}%)`;
+          } else {
+            elSignal.style.display = "none";
+          }
+        }
+
+        // ⚡ 更新超速移動圓形環狀進度條
+        const elSpeed = document.getElementById("status-speed");
+        if (elSpeed) {
+          if (state.boostTime > 0) {
+            elSpeed.style.display = "flex";
+            const pct = (state.boostTime / 3000) * 100;
+            elSpeed.style.background = `conic-gradient(#00bfff ${pct}%, rgba(255, 255, 255, 0.1) ${pct}%)`;
+          } else {
+            elSpeed.style.display = "none";
+          }
         }
 
         const invHud = document.getElementById("inventory-hud");
@@ -3323,8 +3340,8 @@
       // --- 定時器計時與提示器 ---
       // --- 定時器計時與提示器 ---
       setInterval(() => {
-        // 👈 修改這行：在過場動畫期間 (!state.transitionActive) 凍結倒數時間，確保公平
-        if (state.screen === "playing" && !state.isPaused && !state.transitionActive) {
+        // 🆕 核心修正：在過場動畫 (!state.transitionActive) 以及答對亮起黃色動畫 (!state.isWinAnimating) 期間，皆立刻暫停倒數！
+        if (state.screen === "playing" && !state.isPaused && !state.transitionActive && !state.isWinAnimating) {
           state.timeLeft--;
           document.getElementById("time-val").innerText = state.timeLeft;
           state.playTime = (state.playTime || 0) + 1; // 🆕 每秒累計遊玩時數
@@ -4267,7 +4284,8 @@
             style="text-align: left; padding: 15px 20px; height: auto; display: flex; flex-direction: column; gap: 6px; cursor: pointer; margin-bottom: 0; font-family: inherit;"
             onclick="selectSlot(1)">
             <div style="font-weight: 800; font-size: 15px; color: var(--accent);">儲存槽 1 (SLOT 1)</div>
-            <div id="slot-info-1" style="font-size: 12px; color: #aaa; line-height: 1.5; font-weight: normal;">空儲存槽 (NO
+            <div id="slot-info-1" style="font-size: 12px; color: #aaa; line-height: 1.5; font-weight: normal;">空儲存槽
+              (NO
               SAVE)</div>
           </button>
           <!-- Slot 2 -->
@@ -4275,7 +4293,8 @@
             style="text-align: left; padding: 15px 20px; height: auto; display: flex; flex-direction: column; gap: 6px; cursor: pointer; margin-bottom: 0; font-family: inherit;"
             onclick="selectSlot(2)">
             <div style="font-weight: 800; font-size: 15px; color: var(--accent);">儲存槽 2 (SLOT 2)</div>
-            <div id="slot-info-2" style="font-size: 12px; color: #aaa; line-height: 1.5; font-weight: normal;">空儲存槽 (NO
+            <div id="slot-info-2" style="font-size: 12px; color: #aaa; line-height: 1.5; font-weight: normal;">空儲存槽
+              (NO
               SAVE)</div>
           </button>
           <!-- Slot 3 -->
@@ -4283,7 +4302,8 @@
             style="text-align: left; padding: 15px 20px; height: auto; display: flex; flex-direction: column; gap: 6px; cursor: pointer; margin-bottom: 0; font-family: inherit;"
             onclick="selectSlot(3)">
             <div style="font-weight: 800; font-size: 15px; color: var(--accent);">儲存槽 3 (SLOT 3)</div>
-            <div id="slot-info-3" style="font-size: 12px; color: #aaa; line-height: 1.5; font-weight: normal;">空儲存槽 (NO
+            <div id="slot-info-3" style="font-size: 12px; color: #aaa; line-height: 1.5; font-weight: normal;">空儲存槽
+              (NO
               SAVE)</div>
           </button>
         </div>
@@ -4307,6 +4327,7 @@
       z-index: 9999;
       background: rgba(0, 0, 0, 0.75);
       backdrop-filter: blur(5px);
+      pointer-events: auto; /* 🆕 核心修正：強制開啟此層與子按鈕的點擊接收，排除繼承干擾 */
     ">
       <div class="modal" style="max-width: 400px; width: 90%;">
         <h2 id="dialog-title" style="color: var(--accent); margin: 0 0 15px 0; font-size: 20px;">提示 / PROMPT</h2>
@@ -4327,7 +4348,8 @@
         </div>
 
         <div style="display: flex; gap: 10px; justify-content: center;">
-          <button id="dialog-btn-confirm" class="menu-btn selected" style="margin-bottom: 0; flex: 1;">確認 / OK</button>
+          <button id="dialog-btn-confirm" class="menu-btn selected" style="margin-bottom: 0; flex: 1;">確認 /
+            OK</button>
           <button id="dialog-btn-cancel" class="menu-btn"
             style="margin-bottom: 0; flex: 1; background: #222; border: 1px solid #444; display: none;">取消 /
             CANCEL</button>

@@ -461,7 +461,8 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      pointer-events: none;
+      pointer-events: auto;
+      /* 🆕 核心修正：攔截觸控防止穿透 */
     }
 
     .status-bar {
@@ -801,7 +802,7 @@
           <p><strong>🕹️ 遊戲操作：</strong><br>
             - 移動：[W/A/S/D] 或 [方向鍵]；行動裝置可使用動態虛擬搖桿。<br>
             - 拼字排版：進入中央藍框後，按 [E] 鍵進入鍵盤排序模式（[A/D] 或左右方向鍵切換格子，[Space] 鎖定/解鎖，再移動即可交換位置）。電腦版可以直接用滑鼠拖曳格子，行動版可用手指拖曳。<br>
-            - 送出拼字：在藍框內拼好後，點擊下方「送出拼字」或按 [Space] 送出判定。
+            - 送出拼字：在藍框內拼好後，點擊下方「送出拼字」或按 [Enter] 送出判定。
           </p>
           <p><strong>❤️ 回合生命值：</strong><br>每回合有 3 條命。拼字送出錯誤會扣除 1 條命：<br>
             - 第一次錯誤：退回並給予重新拼湊的機會。<br>
@@ -826,16 +827,39 @@
       </div>
       <div id="hud-top">
         <div id="target-display" style="
+              pointer-events: auto; /* 🆕 核心修正：啟用指標事件，攔截觸控防止穿透到畫布 */
               background: rgba(0, 210, 255, 0.1);
-              padding: 8px 24px;
+              padding: 6px 20px;
               border-radius: 10px;
               border: 1px solid rgba(0, 210, 255, 0.2);
               font-size: 14px;
               margin-bottom: 12px;
               display: flex;
-              gap: 15px;
+              gap: 12px;
               align-items: center;
             ">
+          <!-- 🆕 新增：題目左側發音播放按鈕 -->
+          <button id="hud-pronounce-btn" onclick="playTargetPronunciation()" style="
+              pointer-events: auto; /* 🆕 核心修正：強制開啟滑鼠與手指點擊事件 */
+              background: rgba(255, 255, 255, 0.05); 
+              border: 1px solid rgba(0, 210, 255, 0.3);
+              font-size: 15px; 
+              cursor: pointer; 
+              color: var(--accent); 
+              padding: 4px 8px; 
+              border-radius: 6px;
+              outline: none; 
+              transition: 0.2s; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center;
+              gap: 4px;
+              font-weight: 800;
+            " onmouseover="this.style.background='rgba(0, 210, 255, 0.2)'; this.style.transform='scale(1.05)'"
+            onmouseout="this.style.background='rgba(255, 255, 255, 0.05)'; this.style.transform='scale(1)'"
+            title="聽發音 (快速鍵 [P])">
+            🔊 <span style="font-size: 11px; opacity: 0.8; font-weight: normal;">[P]</span>
+          </button>
           <div>尋找單字: <span id="current-target" style="font-weight: 800">---</span></div>
           <div style="opacity: 0.3">|</div>
           <div style="color: #00ff88;">已累積單字: <span id="word-count-hud" style="font-weight: 800;">0</span></div>
@@ -844,7 +868,7 @@
           <div style="opacity: 0.3">|</div>
           <div style="color: #ffcc00;">重置: <span id="hud-resets" style="font-weight: 800;">3/3</span></div>
         </div>
-        <div id="timer-wrapper">
+        <div id="timer-wrapper" style="pointer-events: auto;"> <!-- 🆕 核心修正：攔截觸控防止穿透 -->
           <div id="timer-box"><span id="time-val">60</span>s</div>
         </div>
       </div>
@@ -1070,12 +1094,24 @@
             gameAudioCtx = new AudioContextClass();
           }
 
-          const ctx = gameAudioCtx;
-
           // 確保音訊上下文處於執行狀態 (部分瀏覽器安全機制會預設 suspended)
-          if (ctx.state === 'suspended') {
-            ctx.resume();
+          if (gameAudioCtx.state === 'suspended') {
+            gameAudioCtx.resume();
           }
+
+          // 🆕 新增：建立全域 SFX 主音量控制節點 (降低一倍音量，即原來的 50%)
+          const masterGain = gameAudioCtx.createGain();
+          masterGain.gain.setValueAtTime(0.5, gameAudioCtx.currentTime);
+          masterGain.connect(gameAudioCtx.destination);
+
+          // 🆕 核心音訊代理：劫持 ctx.destination 至主音量節點，安全地將所有音效音量減半
+          const ctx = {
+            currentTime: gameAudioCtx.currentTime,
+            createOscillator: () => gameAudioCtx.createOscillator(),
+            createGain: () => gameAudioCtx.createGain(),
+            createBiquadFilter: () => gameAudioCtx.createBiquadFilter(),
+            destination: masterGain
+          };
 
           const now = Date.now();
 
@@ -1512,7 +1548,7 @@
           // 點擊標題畫面進入選單的瞬間，立刻開始播放背景音樂並設定音量
           // 點擊標題畫面進入選單的瞬間，立刻開始播放背景音樂並設定音量
           if (bgm) {
-            bgm.volume = 0.2; // 20% 音量
+            bgm.volume = 0.15; // 20% 音量
             bgm.muted = state.isMuted; // 👈 🔊 新增：同步靜音狀態
             bgm.play().catch(e => console.warn("等待手勢解鎖以播放 BGM:", e));
           }
@@ -1526,6 +1562,13 @@
       window.addEventListener("keydown", (e) => {
         // 若勝利動畫正在播放，絕對鎖定所有鍵盤輸入
         if (state.isWinAnimating) {
+          e.preventDefault();
+          return;
+        }
+
+        // 🆕 新增：在遊戲進行中，按下 [P] 鍵立即播放當前題目單字的語音發音
+        if (e.code === "KeyP" && state.screen === "playing" && !state.isPaused) {
+          playTargetPronunciation();
           e.preventDefault();
           return;
         }
@@ -1588,7 +1631,7 @@
           }
         }
 
-        // 🆕 核心變更 2：在選單畫面上，[Enter] 與 [E] 鍵均可確認
+        // 🆕 核心變更 2：在選單畫面上，[Enter] 與 [E] 鍵均可作為確認按鍵觸發點擊
         if (e.code === "KeyE" || e.code === "Enter") {
           if (state.screen === "playing") {
             if (e.code === "KeyE" && Math.hypot(state.worldX, state.worldY) < 85) {
@@ -1599,7 +1642,7 @@
               return;
             }
           } else {
-            // 🆕 核心防錯：儲存槽畫面直接呼叫 JS 函式，繞過 DOM 模擬點擊限制
+            // 🆕 核心防錯：如果是儲存槽畫面，直接以 JS 層面呼叫對應函式，繞過 DOM 模擬點擊限制
             if (state.screen === "slots-screen") {
               if (state.menuIdx >= 0 && state.menuIdx <= 2) {
                 selectSlot(state.menuIdx + 1);
@@ -1608,6 +1651,16 @@
               }
               e.preventDefault();
               return;
+            }
+
+            // 🆕 核心防錯：如果是在複習測驗的「結果頁面」按下 E 或 Enter，直接繼續遊戲
+            if (state.screen === "review-quiz-screen") {
+              const resultBox = document.getElementById("review-result-box");
+              if (resultBox && resultBox.style.display === "block") {
+                finishReviewQuiz();
+                e.preventDefault();
+                return;
+              }
             }
 
             const currentBtn = document.querySelector(
@@ -1805,13 +1858,9 @@
       window.addEventListener("touchstart", (e) => {
         if (state.screen !== "playing" || state.isPaused || state.isWinAnimating || state.isSortingMode) return;
 
-        // 防禦機制：點擊在 HUD 介面（如下方背包、右上選單、暫停視窗）上時，不觸發搖桿
-        let target = e.target;
-        while (target) {
-          if (target.id === "inventory-hud" || target.id === "menu-icon" || target.classList.contains("modal") || target.classList.contains("history-panel")) {
-            return;
-          }
-          target = target.parentElement;
+        // 🆕 核心修正：僅限觸碰遊戲畫面畫布 (gameCanvas) 與搖桿本體，觸碰任何上方狀態欄或其他 HUD 時絕不叫出搖桿
+        if (e.target.id !== "gameCanvas" && e.target.id !== "dynamic-joystick" && e.target.id !== "dynamic-stick") {
+          return;
         }
 
         const touch = e.touches[0];
@@ -1854,13 +1903,9 @@
         if (e.button !== 0) return;
         if (state.screen !== "playing" || state.isPaused || state.isWinAnimating || state.isSortingMode) return;
 
-        // 防禦機制：點擊在 HUD 介面（如下方背包、右上選單、暫停視窗）上時，不觸發滑鼠搖桿
-        let target = e.target;
-        while (target) {
-          if (target.id === "inventory-hud" || target.id === "menu-icon" || target.classList.contains("modal") || target.classList.contains("history-panel")) {
-            return;
-          }
-          target = target.parentElement;
+        // 🆕 核心修正：僅限點擊遊戲畫面畫布 (gameCanvas) 與搖桿本體，點擊任何上方狀態欄或其他 HUD 時絕不叫出搖桿
+        if (e.target.id !== "gameCanvas" && e.target.id !== "dynamic-joystick" && e.target.id !== "dynamic-stick") {
+          return;
         }
 
         startX = e.clientX;
@@ -3178,7 +3223,7 @@
         updateNotebookUI();
         // 開始播放背景音樂，並設定適當音量
         if (bgm) {
-          bgm.volume = 0.2;
+          bgm.volume = 0.15;
           bgm.muted = state.isMuted; // 同步靜音狀態
           bgm.play().catch(e => console.warn("等待手勢解鎖以播放 BGM:", e));
         }
@@ -3196,7 +3241,7 @@
         playSFX('reset');
 
         if (typeof bgm !== 'undefined' && bgm) {
-          bgm.volume = 0.2;
+          bgm.volume = 0.15;
         }
 
         state.transitionActive = true;
@@ -3233,7 +3278,7 @@
           if (bgm) bgm.volume = 0.05; // 暫停時音樂變非常小聲
         } else if (state.screen === "system-menu") {
           changeScreen("playing");
-          if (bgm) bgm.volume = 0.2;  // 恢復遊戲時音樂恢復音量
+          if (bgm) bgm.volume = 0.15;  // 恢復遊戲時音樂恢復音量
         }
       }
 
@@ -3303,15 +3348,22 @@
         }
       }
 
+      // 🆕 新增：播放當前挑戰題目單字的語音
+      function playTargetPronunciation() {
+        if (state.targetWord) {
+          speakWord(state.targetWord);
+        }
+      }
+
       // --- TTS 語音合成美式發音控制 (更新：支援播放完畢回呼函數) ---
       function speakWord(word, onEndCallback) {
         if ('speechSynthesis' in window) {
           // 取消當前可能正在播放的其他發音
           window.speechSynthesis.cancel();
 
-          // 🔊 核心修復：發音開始時，將背景音樂 BGM 降至極低音量，避免蓋過發音
+          // 🔊 核心修復：發音開始時，將背景音樂 BGM 完全靜音，避免蓋過發音
           if (typeof bgm !== 'undefined' && bgm) {
-            bgm.volume = 0.03; // 音樂降低至 3%
+            bgm.volume = 0.0; // 調整為 0.0 完全靜音
           }
 
           const cleanWord = word.replace(/_/g, ' ');
@@ -3323,8 +3375,8 @@
           // 輔助函數：恢復背景音樂音量（直接依據當前畫面即時決定恢復音量，避免覆寫）
           const restoreBGMVolume = () => {
             if (typeof bgm !== 'undefined' && bgm) {
-              // 語音結束時：若玩家仍在暫停選單中就恢復為 0.05；若玩家已回到遊戲中則恢復為 0.2
-              bgm.volume = (state.screen === 'system-menu') ? 0.05 : 0.2;
+              // 語音結束時：若玩家仍在暫停選單中就恢復為 0.05；若玩家已回到遊戲中則恢復為 0.1
+              bgm.volume = (state.screen === 'system-menu') ? 0.05 : 0.1;
             }
           };
 
@@ -3790,7 +3842,7 @@
             state.recentCompletedWords = [];
 
             if (bgm) {
-              bgm.volume = 0.2;
+              bgm.volume = 0.15;
               bgm.muted = state.isMuted;
               bgm.play().catch(() => { });
             }
